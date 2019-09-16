@@ -123,5 +123,7 @@ int main(void)
 
     MAZE_RunGame();
 
+	while(1);
+
 #endif
 }
