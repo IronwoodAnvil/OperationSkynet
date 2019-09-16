@@ -1,0 +1,56 @@
+/*
+ * main.c
+ *
+ *  Created on: Sep 16, 2019
+ *      Author: lovep
+ */
+
+#include "init.h"
+
+#define LAB_TASK 1
+
+int main()
+{
+	Sys_Init();
+
+#if LAB_TASK == 1
+
+	EXTI0_HAL_Init();
+
+	while(1);
+
+#elif LAB_TASK == 2
+
+#elif LAB_TASK == 3
+
+#elif LAB_TASK == 4
+
+#endif
+
+}
+
+
+#define BUTTON_IRQ_DEBOUNCE 20
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+
+	if(GPIO_Pin == GPIO_PIN_0)
+	{
+		static uint32_t last_change_tick = -BUTTON_IRQ_DEBOUNCE; // Ensure interrupt caught even at startup
+
+		uint32_t cur_tick = HAL_GetTick();
+
+		// Subtraction ensures correct function even at rollover
+		if(cur_tick-last_change_tick > BUTTON_IRQ_DEBOUNCE){
+			last_change_tick = cur_tick;
+
+			if(HAL_GPIO_ReadPin(GPIOJ, GPIO_PIN_0)) // This is the rising event
+			{
+
+#if LAB_TASK == 1
+				printf("Pressed!\r\n");
+#endif
+			}
+		}
+	}
+}
