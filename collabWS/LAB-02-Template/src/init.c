@@ -118,3 +118,24 @@ void EXTI0_HAL_Init()
 
 	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 }
+
+void TIM7_HAL_Init(TIM_HandleTypeDef* handle)
+{
+	__HAL_RCC_TIM7_CLK_ENABLE();
+
+	TIM_Base_InitTypeDef init;
+	init.Period = 40000;
+	init.Prescaler = 269;
+	// Performs Prescaler+1 counts, period times, that is 270*40000 = 10800000
+	// Time is counts / (counts/s) = 10800000/108000000 = 0.1s
+	init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	init.CounterMode = TIM_COUNTERMODE_UP;
+	init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+
+	handle->Instance = TIM7;
+	handle->Init = init;
+
+	HAL_TIM_Base_Init(handle);
+
+	HAL_NVIC_EnableIRQ(TIM7_IRQn);
+}
