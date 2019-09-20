@@ -119,6 +119,22 @@ void EXTI0_HAL_Init()
 	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
+void TIM6_Reg_Init()
+{
+	// Enable timer RCC clock
+	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
+	asm("nop");
+	asm("nop");
+
+	TIM6->DIER |= TIM_DIER_UIE; //Enable update interrupt
+	TIM6->PSC = 539;
+	TIM6->ARR = 20000;
+	// 20000*(539+1) = 10800000 -> 0.1s period
+
+	// Enable interrupt vector and consumes cycles between clocking and configuring registers
+	NVIC_EnableIRQ(TIM6_DAC_IRQn);
+}
+
 void TIM7_HAL_Init(TIM_HandleTypeDef* handle)
 {
 	__HAL_RCC_TIM7_CLK_ENABLE();
