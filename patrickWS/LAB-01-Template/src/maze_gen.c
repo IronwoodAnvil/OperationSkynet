@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Implements the Aldous-Broder maze generation algorithm using the edge-based representation
+// http://weblog.jamisbuck.org/2011/1/17/maze-generation-aldous-broder-algorithm
 void aldous_broder_ust(dir_t* field, uint32_t size)
 {
 	memset(field,0,size*size*sizeof(dir_t)); //Clear maze
@@ -28,7 +30,7 @@ void aldous_broder_ust(dir_t* field, uint32_t size)
 		} while (!COORD_in_square(nextCoord, size));
 		dir_t* nextDirs = field + COORD_to_index(nextCoord, size);
 
-		if(!*nextDirs) // No directions, unvisited.  Add to path and decrement remaining
+		if(!*nextDirs) // No directions yet so unvisited.  Add path and decrement remaining
 		{
 			--remaining;
 			*currentDirs |= dir;
@@ -38,16 +40,18 @@ void aldous_broder_ust(dir_t* field, uint32_t size)
 		currentDirs = nextDirs;
 	}
 
-	//Always go from top to bottom of maze
+	// Clear out entrance and exit randomly on top and bottom row
 	uint32_t start_id = rand() % size;
 	uint32_t end_id = (size*size-1) - (rand() % size);
 	field[start_id] |= DIR_UP;
 	field[end_id] |= DIR_DOWN;
 }
 
+// Converts the edge-based representation to the printable (wall or no wall) representation
 void edge_to_printable(dir_t* edge_maze, bool* print, uint32_t size)
 {
 	uint32_t print_size = 2*size+1;
+	bool* print_pos = print;
 
 	for(uint32_t i = 0; i < print_size; ++i) // Set all corners as walls
 	{
@@ -59,7 +63,7 @@ void edge_to_printable(dir_t* edge_maze, bool* print, uint32_t size)
 			if(row_odd)
 			{
 				if(col_odd){ // Corridor square
-					fill = false;
+					*print_pos = false;
 				}
 				else // possible left/right boundary
 				{
@@ -69,7 +73,7 @@ void edge_to_printable(dir_t* edge_maze, bool* print, uint32_t size)
 						id = size-1;
 						mask = DIR_RIGHT;
 					}
-					fill = !(edge_maze[(i/2)*size+id] & mask); // Fill if can't go this way
+					*print_pos = !(edge_maze[(i/2)*size+id] & mask); // Fill if can't go this way
 				}
 			}
 			else
@@ -81,14 +85,15 @@ void edge_to_printable(dir_t* edge_maze, bool* print, uint32_t size)
 						id = size-1;
 						mask = DIR_DOWN;
 					}
-					fill = !(edge_maze[id*size+(j/2)] & mask); // Fill if can't go this way
+					*print_pos = !(edge_maze[id*size+(j/2)] & mask); // Fill if can't go this way
 				}
 				else // Corner, always wall
 				{
-					fill = true;
+					*print_pos = true;
 				}
 			}
-			print[i*print_size + j] = fill;
+
+			++print_pos;
 		}
 	}
 }
