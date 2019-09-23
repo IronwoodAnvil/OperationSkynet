@@ -1,17 +1,15 @@
 //------------------------------------------------------------------------------------
-// Hello.c
+// mascan_task3.c    mascan   9/15/19
 //------------------------------------------------------------------------------------
-//
-// Test program to demonstrate serial port I/O.  This program writes a message on
-// the console using the printf() function, and reads characters using the getchar()
-// function.  An ANSI escape sequence is used to clear the screen if a '2' is typed.
-// A '1' repeats the message and the program responds to other input characters with
-// an appropriate message.
-//
-// Any valid keystroke turns on the green LED on the board; invalid entries turn it off
-//
-
-
+/*
+Sets each accessible on-board LED (LD1-LD4) port pin to function as a digital output.
+Sets the Arduino Header pins D0 through D3 to be digital inputs with internal pull-up resistors
+enabled.
+switches wired such that when not pressed (or toggled), the D# pin receives a value of 0V
+(logic LOW) and +5V when pressed/toggled (logic HIGH).
+Continuously reads the state of the switches and turn on or off an LED accordingly. The switch
+connected to D0 should control LD1, D1 controls LD2, etc.
+ */
 //------------------------------------------------------------------------------------
 // Includes
 //------------------------------------------------------------------------------------
@@ -19,17 +17,20 @@
 #include "hello.h"
 
 #include<stdint.h>
+																//		turns on led
+#define LED1ON() 	HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_13, 1)  	//        		1
+#define LED2ON()	HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_5, 1)		//        		2
+#define LED3ON()	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, 1)	//        		3
+#define LED4ON()	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, 0)// note: flipped    	4
 
-#define LED1ON() 	HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_13, 1)
-#define LED2ON()	HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_5, 1)
-#define LED3ON()	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, 1)
-#define LED4ON()	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, 0)
+																//      turns off led
+#define LED1OFF()   HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_13, 0)//					1
+#define LED2OFF()	HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_5, 0)//					2
+#define LED3OFF()	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, 0)//					3
+#define LED4OFF()	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, 1)//note: flipped		4
 
-#define LED1OFF()   HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_13, 0)
-#define LED2OFF()	HAL_GPIO_WritePin(GPIOJ, GPIO_PIN_5, 0)
-#define LED3OFF()	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, 0)
-#define LED4OFF()	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, 1)
 
+//read switches
 #define readS1()    HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_7)
 #define readS2()	HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_6)
 #define readS3()	HAL_GPIO_ReadPin(GPIOJ, GPIO_PIN_1)
