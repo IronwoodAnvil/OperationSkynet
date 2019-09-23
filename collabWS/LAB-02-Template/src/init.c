@@ -121,7 +121,7 @@ void EXTI0_HAL_Init()
 
 void TIM6_Reg_Init()
 {
-	// Enable timer RCC clock
+	// Enable timer RCC clock and wait for it to start
 	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
 	asm("nop");
 	asm("nop");
@@ -131,8 +131,7 @@ void TIM6_Reg_Init()
 	TIM6->ARR = 20000;
 	// 20000*(539+1) = 10800000 -> 0.1s period
 
-	// Enable interrupt vector and consumes cycles between clocking and configuring registers
-	NVIC_EnableIRQ(TIM6_DAC_IRQn);
+	NVIC->ISER[TIM6_DAC_IRQn/32] |= (1 << (TIM6_DAC_IRQn%32));
 }
 
 void TIM7_HAL_Init(TIM_HandleTypeDef* handle)
