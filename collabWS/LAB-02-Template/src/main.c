@@ -7,7 +7,7 @@
 
 #include "init.h"
 
-#define LAB_TASK 2
+#define LAB_TASK 3
 
 #define TIM6_ENABLE() (TIM6->CR1 |= TIM_CR1_CEN)
 #define TIM6_DISABLE() (TIM6->CR1 &= ~TIM_CR1_CEN)
@@ -21,7 +21,9 @@ int main()
 #if LAB_TASK == 1
 
 	EXTI0_HAL_Init();
+	EXTI8_Reg_Init();
 
+	EXTI->SWIER |= EXTI_SWIER_SWIER8;
 	while(1);
 
 #elif LAB_TASK == 2
@@ -69,7 +71,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			{
 
 #if LAB_TASK == 1
-				printf("Pressed!\r\n");
+				printf("Pressed EXTI0!\r\n");
 #endif
 			}
 		}
@@ -86,8 +88,14 @@ void CountAndPrintTime()
 
 void TIM6_DAC_IRQHandler()
 {
-	CountAndPrintTime();
 	TIM6->SR &= ~TIM_SR_UIF;
+	CountAndPrintTime();
+}
+
+void EXTI9_5_IRQHandler()
+{
+	EXTI->PR |= GPIO_PIN_8;
+	printf("Pressed EXT8!\r\n");
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* handle)
