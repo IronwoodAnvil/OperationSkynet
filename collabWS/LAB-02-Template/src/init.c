@@ -127,8 +127,8 @@ void TIM6_Reg_Init()
 	asm("nop");
 
 	TIM6->DIER |= TIM_DIER_UIE; //Enable update interrupt
-	TIM6->PSC = 539;
-	TIM6->ARR = 20000;
+	TIM6->PSC = 540-1;
+	TIM6->ARR = 20000-1;
 	// 20000*(539+1) = 10800000 -> 0.1s period
 
 	NVIC->ISER[TIM6_DAC_IRQn/32] |= (1 << (TIM6_DAC_IRQn%32));
@@ -139,8 +139,8 @@ void TIM7_HAL_Init(TIM_HandleTypeDef* handle)
 	__HAL_RCC_TIM7_CLK_ENABLE();
 
 	TIM_Base_InitTypeDef init;
-	init.Period = 40000;
-	init.Prescaler = 269;
+	init.Period = 40000-1;
+	init.Prescaler = 270-1;
 	// Performs Prescaler+1 counts, period times, that is 270*40000 = 10800000
 	// Time is counts / (counts/s) = 10800000/108000000 = 0.1s
 	init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
