@@ -7,7 +7,7 @@
 
 #include "init.h"
 
-#define LAB_TASK 2
+#define LAB_TASK 1
 
 #define TIM6_ENABLE() (TIM6->CR1 |= TIM_CR1_CEN)
 #define TIM6_DISABLE() (TIM6->CR1 &= ~TIM_CR1_CEN)
@@ -67,10 +67,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
 			if(HAL_GPIO_ReadPin(GPIOJ, GPIO_PIN_0)) // This is the rising event
 			{
-
-#if LAB_TASK == 1
 				printf("Pressed!\r\n");
-#endif
 			}
 		}
 	}
@@ -86,8 +83,8 @@ void CountAndPrintTime()
 
 void TIM6_DAC_IRQHandler()
 {
-	CountAndPrintTime();
 	TIM6->SR &= ~TIM_SR_UIF;
+	CountAndPrintTime();
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* handle)
