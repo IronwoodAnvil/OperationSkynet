@@ -92,7 +92,7 @@ void TIM6_DAC_IRQHandler()
 
 void EXTI9_5_IRQHandler()
 {
-	EXTI->PR |= GPIO_PIN_8;
+	EXTI->PR |= GPIO_PIN_8; //manually remove flag
 	printf("Pressed EXT8!\r\n");
 }
 

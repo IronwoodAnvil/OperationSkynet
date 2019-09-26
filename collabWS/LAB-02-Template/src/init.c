@@ -120,20 +120,24 @@ void EXTI0_HAL_Init()
 
 }
 
+// Configure PB8 (D15) as an interrupt via EXTI8
+// EXTI8 Must be a pin 8 (from ports A-K)
 void EXTI8_Reg_Init()/***********/
 {
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;  //PB8
-	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
+	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN; //clock enable
 	asm ("nop");
 	asm ("nop");
 
-	GPIOB->PUPDR |= GPIO_PUPDR_PUPDR8_1;
-	SYSCFG->EXTICR[2] |= SYSCFG_EXTICR3_EXTI8_PB;
+	GPIOB->PUPDR |= GPIO_PUPDR_PUPDR8_1;  // set to pull down
+	SYSCFG->EXTICR[2] |= SYSCFG_EXTICR3_EXTI8_PB; // in [2] b/c 0-3 4-7 [8-11] 12-15
 
 
-	EXTI->IMR |= EXTI_IMR_IM8;
-	EXTI->RTSR |= EXTI_RTSR_TR8; //rising edge
+	EXTI->IMR |= EXTI_IMR_IM8; //mask for pin 8
+	EXTI->RTSR |= EXTI_RTSR_TR8; //select rising edge
+	// EXTI 9-5 has position 23, so lives in iser 0.  bit in iser 0 is 23
 	NVIC->ISER[EXTI9_5_IRQn/32] |= (uint32_t) 1 << (EXTI9_5_IRQn % 32);
+
 }
 
 void TIM6_Reg_Init()
