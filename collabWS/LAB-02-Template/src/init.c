@@ -110,13 +110,30 @@ void EXTI0_HAL_Init()
 	GPIO_InitTypeDef init;
 	init.Pin = GPIO_PIN_0;
 	init.Pull = GPIO_PULLDOWN;
-	init.Mode = GPIO_MODE_IT_RISING_FALLING;
+	init.Mode = GPIO_MODE_IT_RISING_FALLING; //magic
 	init.Speed = GPIO_SPEED_LOW;
 	init.Alternate = 0;
 
 	HAL_GPIO_Init(GPIOJ, &init);
 
 	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+}
+
+void EXTI8_Reg_Init()/***********/
+{
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;  //PB8
+	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+	asm ("nop");
+	asm ("nop");
+
+	GPIOB->PUPDR |= GPIO_PUPDR_PUPDR8_1;
+	SYSCFG->EXTICR[2] |= SYSCFG_EXTICR3_EXTI8_PB;
+
+
+	EXTI->IMR |= EXTI_IMR_IM8;
+	EXTI->RTSR |= EXTI_RTSR_TR8; //rising edge
+	NVIC->ISER[EXTI9_5_IRQn/32] |= (uint32_t) 1 << (EXTI9_5_IRQn % 32);
 }
 
 void TIM6_Reg_Init()

@@ -21,7 +21,9 @@ int main()
 #if LAB_TASK == 1
 
 	EXTI0_HAL_Init();
+	EXTI8_Reg_Init();
 
+	EXTI->SWIER |= EXTI_SWIER_SWIER8;
 	while(1);
 
 #elif LAB_TASK == 2
@@ -68,6 +70,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			if(HAL_GPIO_ReadPin(GPIOJ, GPIO_PIN_0)) // This is the rising event
 			{
 				printf("Pressed!\r\n");
+				printf("Pressed EXTI0!\r\n");
 			}
 		}
 	}
@@ -85,6 +88,12 @@ void TIM6_DAC_IRQHandler()
 {
 	TIM6->SR &= ~TIM_SR_UIF;
 	CountAndPrintTime();
+}
+
+void EXTI9_5_IRQHandler()
+{
+	EXTI->PR |= GPIO_PIN_8;
+	printf("Pressed EXT8!\r\n");
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* handle)
