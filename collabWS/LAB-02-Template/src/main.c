@@ -7,7 +7,12 @@
 
 #include "init.h"
 
-#define LAB_TASK 1
+#define LAB_TASK 2
+
+#define TIM6_ENABLE() (TIM6->CR1 |= TIM_CR1_CEN)
+#define TIM6_DISABLE() (TIM6->CR1 &= ~TIM_CR1_CEN)
+
+TIM_HandleTypeDef TIM7_Handle;
 
 int main()
 {
@@ -21,7 +26,23 @@ int main()
 
 #elif LAB_TASK == 2
 
+	TIM6_Reg_Init();
+
+	printf("Press a key to start the timing\r\n");
+	getchar();
+
+	TIM6_ENABLE();
+	while(1);
+
 #elif LAB_TASK == 3
+
+	TIM7_HAL_Init(&TIM7_Handle);
+
+	printf("Press a key to start the timing\r\n");
+	getchar();
+
+	HAL_TIM_Base_Start_IT(&TIM7_Handle);
+	while(1);
 
 #elif LAB_TASK == 4
 
@@ -52,5 +73,27 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 #endif
 			}
 		}
+	}
+}
+
+void CountAndPrintTime()
+{
+	static uint32_t time_ovf = 0;
+	++time_ovf;
+	printf("\rT+%lu.%lus", time_ovf/10, time_ovf%10);
+	fflush(stdout);
+}
+
+void TIM6_DAC_IRQHandler()
+{
+	CountAndPrintTime();
+	TIM6->SR &= ~TIM_SR_UIF;
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* handle)
+{
+	if(handle == &TIM7_Handle)
+	{
+		CountAndPrintTime();
 	}
 }
