@@ -11,7 +11,12 @@ int main(void) {
 	Sys_Init();
 
 	printf("Your code here!\r\n");
+	fflush(stdout);
 
-	// Lost? Check out uart.c!
+	dprintf(WIRE_OUT_FD, "Test %d\r\n", 1);
+	fprintf(WIRE_FOUT, "Test %d", 2);
+	HAL_Delay(1000);
+	fflush(WIRE_FOUT);
 
+	while(1);
 }

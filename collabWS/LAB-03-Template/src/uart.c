@@ -1,5 +1,14 @@
 #include "uart.h"
 
+UART_HandleTypeDef USB_UART;
+UART_HandleTypeDef WIRE_UART;
+
+FILE* USB_FOUT;
+FILE* USB_FIN;
+FILE* WIRE_FOUT;
+FILE* WIRE_FIN;
+
+
 // Initialize Hardware Resources
 // Peripheral's clock enable
 // Peripheral's GPIO Configuration
@@ -61,6 +70,14 @@ void initUart(UART_HandleTypeDef* Uhand, uint32_t Baud, USART_TypeDef* Tgt) {
 	HAL_UART_Init(Uhand);
 }
 
+void initUartFileIO()
+{
+	USB_FOUT = stdout;
+	USB_FIN = stdin;
+	WIRE_FOUT = fdopen(WIRE_OUT_FD,"a");
+	WIRE_FIN = fdopen(WIRE_IN_FD,"r");
+}
+
 /* ============================================================================
 
 Reassigning _write and _read to USB_UART by default.
@@ -73,19 +90,39 @@ HAL_UART_Receive(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size, uint3
 
 ============================================================================= */
 
+UART_HandleTypeDef* fd_uart_decode(int file)
+{
+	UART_HandleTypeDef* handle = NULL;
 
-// Make printf(), putchar(), etc. default to work over USB UART
-int _write(int file, char *ptr, int len) {
-	HAL_UART_Transmit(&USB_UART, (uint8_t*) ptr, len, 1000);
-	return len;
+	if(file==USB_OUT_FD || file==USB_IN_FD) handle = &USB_UART;
+	else if(file==WIRE_OUT_FD || file==WIRE_IN_FD) handle = &WIRE_UART;
+
+	return handle;
 }
 
-// Make scanf(), getchar(), etc. default to work over USB UART
+// Make printf(), putchar(), etc. work over -̶U̶S̶B̶  BOTH UART (default USB)
+int _write(int file, char *ptr, int len) {
+	UART_HandleTypeDef* handle = fd_uart_decode(file);
+	if(handle){
+		HAL_UART_Transmit(handle, (uint8_t*) ptr, len, 1000);
+		return len;
+	} else {
+		return 0;
+	}
+}
+
+// Make scanf(), getchar(), etc. work over -̶U̶S̶B̶  BOTH UART (default USB)
 int _read(int file, char *ptr, int len) {
-	*ptr = 0x00; // Clear the character buffer because scanf() is finicky
-	len = 1; // Again because of scanf's finickiness, len must = 1
-	HAL_UART_Receive(&USB_UART, (uint8_t*) ptr, len, HAL_MAX_DELAY);
-	return len;
+	UART_HandleTypeDef* handle = fd_uart_decode(file);
+	if(handle)
+	{
+		*ptr = 0x00; // Clear the character buffer because scanf() is finicky
+		len = 1; // Again because of scanf's finickiness, len must = 1
+		HAL_UART_Receive(&USB_UART, (uint8_t*) ptr, len, HAL_MAX_DELAY);
+		return len;
+	} else {
+		return 0;
+	}
 }
 
 /* ============================================================================

@@ -85,6 +85,8 @@ void Sys_Init(void) {
 		- Hardware flow control disabled (RTS and CTS signals)
 	*/
 	initUart(&USB_UART, 115200, USART1);
+	initUart(&WIRE_UART, 9600, USART6);
+	initUartFileIO();
 }
 
 // This function is what makes everything work
