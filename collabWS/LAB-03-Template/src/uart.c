@@ -1,20 +1,14 @@
 #include "uart.h"
 
-UART_HandleTypeDef USB_UART;
-UART_HandleTypeDef WIRE_UART;
-
-FILE* USB_FOUT;
-FILE* USB_FIN;
-FILE* WIRE_FOUT;
-FILE* WIRE_FIN;
-
+#define FD_TAB_SIZE 8
+static UART_HandleTypeDef fd_tab[FD_TAB_SIZE] = {{0}};
+static int stdio_fd_map = 0;
 
 // Initialize Hardware Resources
 // Peripheral's clock enable
 // Peripheral's GPIO Configuration
 void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 	GPIO_InitTypeDef  GPIO_InitStruct;
-
 	if (huart->Instance == USART1) {
 		// Enable GPIO Clocks
 		__GPIOA_CLK_ENABLE();
@@ -56,6 +50,39 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 	}
 }
 
+void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
+{
+	if (huart->Instance == USART1) {
+		__USART1_CLK_DISABLE();
+		HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9);
+		HAL_GPIO_DeInit(GPIOA, GPIO_PIN_10);
+		//Don't disable clock, other pins might be in use
+	}
+	else if(huart->Instance == USART6) {
+		__USART6_CLK_DISABLE();
+		HAL_GPIO_DeInit(GPIOC, GPIO_PIN_6);
+		HAL_GPIO_DeInit(GPIOC, GPIO_PIN_7);
+		//Don't disable clock, other pins might be in use
+	}
+}
+
+FILE* openUart(USART_TypeDef* Tgt, uint32_t Baud)
+{
+	int fd = 3;
+	UART_HandleTypeDef* handle = fd_tab;
+
+	while(handle->Instance) ++handle, ++fd; // Find free file descriptor
+
+	initUart(handle, Baud, Tgt);
+
+	return fdopen(fd,"r+");
+}
+
+void stdIOUart(FILE* uart)
+{
+	stdio_fd_map = fileno(uart);
+}
+
 //UART Initialization
 void initUart(UART_HandleTypeDef* Uhand, uint32_t Baud, USART_TypeDef* Tgt) {
 	Uhand->Instance        = Tgt;
@@ -70,17 +97,9 @@ void initUart(UART_HandleTypeDef* Uhand, uint32_t Baud, USART_TypeDef* Tgt) {
 	HAL_UART_Init(Uhand);
 }
 
-void initUartFileIO()
-{
-	USB_FOUT = stdout;
-	USB_FIN = stdin;
-	WIRE_FOUT = fdopen(WIRE_OUT_FD,"a");
-	WIRE_FIN = fdopen(WIRE_IN_FD,"r");
-}
-
 /* ============================================================================
 
-Reassigning _write and _read to USB_UART by default.
+Reassigning _write and _read to decode file descriptor and write to the corresponding UART
 
 Note the following for an explanation of syntax:
 
@@ -94,8 +113,17 @@ UART_HandleTypeDef* fd_uart_decode(int file)
 {
 	UART_HandleTypeDef* handle = NULL;
 
-	if(file==USB_OUT_FD || file==USB_IN_FD) handle = &USB_UART;
-	else if(file==WIRE_OUT_FD || file==WIRE_IN_FD) handle = &WIRE_UART;
+	if(stdio_fd_map && (file==0||file==1)) // stdio remapping
+	{
+		file = stdio_fd_map;
+	}
+
+	file -= 3;
+
+	if(file >= 0 && file < FD_TAB_SIZE && fd_tab[file].Instance) // File is in UART table range and has valid handle
+	{
+		handle = &fd_tab[file];
+	}
 
 	return handle;
 }
@@ -104,10 +132,12 @@ UART_HandleTypeDef* fd_uart_decode(int file)
 int _write(int file, char *ptr, int len) {
 	UART_HandleTypeDef* handle = fd_uart_decode(file);
 	if(handle){
-		HAL_UART_Transmit(handle, (uint8_t*) ptr, len, 1000);
+		HAL_StatusTypeDef status = HAL_UART_Transmit(handle, (uint8_t*) ptr, len, 1000);
+		if(status==HAL_OK) return len;
+		else return -1;
 		return len;
 	} else {
-		return 0;
+		return -1;
 	}
 }
 
@@ -118,11 +148,27 @@ int _read(int file, char *ptr, int len) {
 	{
 		*ptr = 0x00; // Clear the character buffer because scanf() is finicky
 		len = 1; // Again because of scanf's finickiness, len must = 1
-		HAL_UART_Receive(&USB_UART, (uint8_t*) ptr, len, HAL_MAX_DELAY);
-		return len;
+		HAL_StatusTypeDef status = HAL_UART_Receive(handle, (uint8_t*) ptr, len, HAL_MAX_DELAY);
+		if(status==HAL_OK) return len;
+		else if(status==HAL_TIMEOUT) return 0;
+		else return -1;
 	} else {
+		return -1;
+	}
+}
+
+int _close(int file) {
+	file -= 3;
+	if(file>=0 && file < FD_TAB_SIZE)
+	{
+		if(fd_tab[file].Instance)
+		{
+			HAL_UART_DeInit(&fd_tab[file]);
+		}
+		memset(&fd_tab[file],0,sizeof(fd_tab[file]));
 		return 0;
 	}
+	return -1;
 }
 
 /* ============================================================================
