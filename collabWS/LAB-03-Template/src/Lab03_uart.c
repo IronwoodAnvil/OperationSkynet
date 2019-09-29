@@ -40,7 +40,7 @@ int main(void) {
 
 	while(1)
 	{
-		char c = fgetc(USB_UART);
+		char c = fgetc(WIRE_UART);
 		if(c==0x1B) break;
 		fprintf(USB_UART,"Typed '%c'\r\n",c);
 		fflush(USB_UART);

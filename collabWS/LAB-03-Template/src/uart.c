@@ -47,6 +47,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 		// Enable UART Clocking
 		__USART6_CLK_ENABLE();
 
+		USART6->CR2 |= USART_CR2_RXINV | USART_CR2_TXINV; // Invert TX/RX for wired UART
 	}
 }
 
