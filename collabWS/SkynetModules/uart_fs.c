@@ -10,6 +10,7 @@
 #if UART_FS_ENABLED
 
 #define FD_TAB_SIZE 8
+#define POLL_INTERVAL 0
 
 static UART_HandleTypeDef* fd_tab[FD_TAB_SIZE] = {0};
 static int stdio_fd_map = 0;
@@ -52,7 +53,7 @@ static int USART_IRQn(USART_TypeDef* instance)
 static void uart_fs_IRQHandler(USART_TypeDef* instance)
 {
 	UART_HandleTypeDef** handle_pos = fd_tab;
-	while(handle_pos < fd_tab+FD_TAB_SIZE && *handle_pos) ++handle_pos;
+	while(handle_pos < fd_tab+FD_TAB_SIZE && (*handle_pos)->Instance!=instance) ++handle_pos;
 	if(handle_pos >= fd_tab+FD_TAB_SIZE)
 	{
 		while(1);
@@ -65,7 +66,7 @@ static void uart_fs_IRQHandler(USART_TypeDef* instance)
 static int findHandle(UART_HandleTypeDef* handle)
 {
 	UART_HandleTypeDef** handle_pos = fd_tab;
-	while(handle_pos < fd_tab+FD_TAB_SIZE && *handle_pos==handle) ++handle_pos;
+	while(handle_pos < fd_tab+FD_TAB_SIZE && *handle_pos!=handle) ++handle_pos;
 	if(handle_pos >= fd_tab+FD_TAB_SIZE)
 	{
 		while(1);
@@ -85,7 +86,7 @@ static int fd_to_id(int file)
 	return file;
 }
 
-static UART_HandleTypeDef* fd_uart_decode(int file)
+static UART_HandleTypeDef* fd_to_handle(int file)
 {
 	UART_HandleTypeDef* handle = NULL;
 
@@ -103,7 +104,7 @@ static UART_HandleTypeDef* fd_uart_decode(int file)
 
 // Make printf(), putchar(), etc. work over -̶U̶S̶B̶  BOTH UART (default USB)
 int _write(int file, char *ptr, int len) {
-	UART_HandleTypeDef* handle = fd_uart_decode(file);
+	UART_HandleTypeDef* handle = fd_to_handle(file);
 	if(handle){
 #if UART_FS_TX_USE_INTERRUPT
 		int id = fd_to_id(file);
@@ -125,7 +126,7 @@ int _write(int file, char *ptr, int len) {
 
 // Make scanf(), getchar(), etc. work over -̶U̶S̶B̶  BOTH UART (default USB)
 int _read(int file, char *ptr, int len) {
-	UART_HandleTypeDef* handle = fd_uart_decode(file);
+	UART_HandleTypeDef* handle = fd_to_handle(file);
 	if(handle)
 	{
 		*ptr = 0x00; // Clear the character buffer because scanf() is finicky
@@ -206,6 +207,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* handle)
 	}
 }
 
+#if UART_FS_TX_USE_INTERRUPT
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef* handle)
 {
 	int id = findHandle(handle);
@@ -216,6 +218,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef* handle)
 	free(tx_buf[id]);
 	tx_buf[id] = NULL;
 }
+#endif
 
 #endif
 
@@ -239,6 +242,7 @@ int uart_fdopen(USART_TypeDef* reg, UART_InitTypeDef* config)
 	while(*handle_pos) ++handle_pos, ++fd; // Find free file descriptor
 
 	UART_HandleTypeDef* handle = malloc(sizeof(UART_HandleTypeDef));
+	memset(handle,0,sizeof(UART_HandleTypeDef));
 	*handle_pos = handle;
 
 	handle->Instance = reg;
@@ -260,8 +264,8 @@ FILE* uart_fopen(USART_TypeDef* reg, UART_InitTypeDef* config)
 
 _Bool dpoll(int fd, char* c)
 {
-	UART_HandleTypeDef* handle = fd_uart_decode(fd);
-	HAL_StatusTypeDef status = HAL_UART_Receive(handle, (uint8_t*)c, 1, 0);
+	UART_HandleTypeDef* handle = fd_to_handle(fd);
+	HAL_StatusTypeDef status = HAL_UART_Receive(handle, (uint8_t*)c, 1, POLL_INTERVAL);
 	return status==HAL_OK;
 }
 
@@ -275,7 +279,7 @@ _Bool fpoll(FILE* uart, char* c)
 
 void read_async(int fd, char* val)
 {
-	UART_HandleTypeDef* handle = fd_uart_decode(fd);
+	UART_HandleTypeDef* handle = fd_to_handle(fd);
 	HAL_UART_Receive_IT(handle, (uint8_t*)val, 1);
 }
 void fgetc_async(FILE* file, char* val)
@@ -285,7 +289,7 @@ void fgetc_async(FILE* file, char* val)
 
 void uart_fdDataCallback(int fd, dr_callback_t cb)
 {
-	callback_tab[fd-3] = cb;
+	callback_tab[fd_to_id(fd)] = cb;
 }
 
 void uart_fDataCallback(FILE* file, dr_callback_t cb)

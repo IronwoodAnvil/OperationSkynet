@@ -5,7 +5,7 @@
  *      Author: lovep
  */
 
-#include "conf.h"
+#include <task.h>
 
 #define UART_FS_ENABLED 1
 

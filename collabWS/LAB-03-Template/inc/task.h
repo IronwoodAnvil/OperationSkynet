@@ -5,9 +5,9 @@
  *      Author: lovep
  */
 
-#ifndef CONF_H_
-#define CONF_H_
+#ifndef TASK_H_
+#define TASK_H_
 
-#define LAB_TASK 2
+#define LAB_TASK 1
 
-#endif /* CONF_H_ */
+#endif /* TASK_H_ */
