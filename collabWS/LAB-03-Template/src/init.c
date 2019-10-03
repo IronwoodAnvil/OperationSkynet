@@ -129,8 +129,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 		// Enable UART Clocking
 		__USART6_CLK_ENABLE();
 
-		huart->AdvancedInit.RxPinLevelInvert = UART_ADVFEATURE_RXINV_ENABLE;
-		huart->AdvancedInit.TxPinLevelInvert = UART_ADVFEATURE_TXINV_ENABLE;
+		USART6->CR2 |= USART_CR2_TXINV | USART_CR2_RXINV;
 	}
 }
 
