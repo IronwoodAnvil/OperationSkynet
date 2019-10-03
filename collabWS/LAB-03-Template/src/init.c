@@ -129,7 +129,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 		// Enable UART Clocking
 		__USART6_CLK_ENABLE();
 
-		USART6->CR2 |= USART_CR2_RXINV | USART_CR2_TXINV; // Invert TX/RX for wired UART
+		huart->AdvancedInit.RxPinLevelInvert = UART_ADVFEATURE_RXINV_ENABLE;
+		huart->AdvancedInit.TxPinLevelInvert = UART_ADVFEATURE_TXINV_ENABLE;
 	}
 }
 
@@ -146,5 +147,70 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 		HAL_GPIO_DeInit(GPIOC, GPIO_PIN_6);
 		HAL_GPIO_DeInit(GPIOC, GPIO_PIN_7);
 		//Don't disable clock, other pins might be in use
+	}
+}
+
+/*
+ * For convenience, configure the SPI handler here
+ */
+// See 769 Description of HAL drivers.pdf, Ch. 58.1 or stm32f7xx_hal_spi.c
+void SPI_Init(SPI_HandleTypeDef* handle)
+{
+	handle->Instance = SPI2;
+	handle->Init.Mode = SPI_MODE_MASTER;
+	handle->Init.TIMode = SPI_TIMODE_DISABLE;
+	//216e6 / 4 (APB Prescaler) / 64 (SPI Prescaler) = 843.75 kHz ~ 1 MHz
+	handle->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+	handle->Init.Direction = SPI_DIRECTION_2LINES;
+	handle->Init.DataSize = SPI_DATASIZE_8BIT;
+	handle->Init.FirstBit = SPI_FIRSTBIT_LSB;
+	handle->Init.CLKPhase = SPI_PHASE_2EDGE;
+	handle->Init.CLKPolarity = SPI_POLARITY_HIGH;
+	handle->Init.NSS = SPI_NSS_SOFT;
+
+	HAL_SPI_Init(handle);
+}
+
+
+/*
+ * This is called upon SPI initialization. It handles the configuration
+ * of the GPIO pins for SPI.
+ */
+ // Do NOT change the name of an MspInit function; it needs to override a
+ // __weak function of the same name. It does not need a prototype in the header.
+void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
+{
+	if (hspi->Instance == SPI2)
+	{
+		// Enable SPI GPIO port clocks, set HAL GPIO init structure's values for each
+		// SPI-related port pin (SPI port pin configuration), enable SPI IRQs (if applicable), etc.
+		__SPI2_CLK_ENABLE();
+		__GPIOA_CLK_ENABLE();
+		__GPIOB_CLK_ENABLE();
+
+		GPIO_InitTypeDef pinInit;
+		pinInit.Mode = GPIO_MODE_AF_PP;
+		pinInit.Alternate = GPIO_AF5_SPI2;
+		pinInit.Pull = GPIO_NOPULL;
+		pinInit.Speed = GPIO_SPEED_LOW;
+
+		// PA12 -> SCK
+		pinInit.Pin = GPIO_PIN_12;
+		HAL_GPIO_Init(GPIOA, &pinInit);
+
+		// PB14 -> MISO
+		pinInit.Pin = GPIO_PIN_14;
+		HAL_GPIO_Init(GPIOB, &pinInit);
+
+		// PB15 -> MOSI
+		pinInit.Pin = GPIO_PIN_15;
+		HAL_GPIO_Init(GPIOB, &pinInit);
+
+		// PA11 -> CS (not using AF mode)
+		pinInit.Mode = GPIO_MODE_OUTPUT_PP;
+		pinInit.Pin = SPI_CS_PIN;
+		HAL_GPIO_Init(SPI_CS_PORT, &pinInit);
+
+		HAL_GPIO_WritePin(SPI_CS_PORT, SPI_CS_PIN, GPIO_PIN_SET);
 	}
 }
