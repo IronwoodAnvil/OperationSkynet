@@ -12,7 +12,7 @@
 
 #define UART_FS_INTERRUPT_MODE_ENABLED 1
 #if LAB_TASK == 2
-#define UART_FS_TX_USE_INTERRUPT 1
+#define UART_FS_TX_USE_INTERRUPT 1 //blocking
 #else
-#define UART_FS_TX_USE_INTERRUPT 0
+#define UART_FS_TX_USE_INTERRUPT 0 //non-blocking
 #endif
