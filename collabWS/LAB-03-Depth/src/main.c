@@ -13,19 +13,40 @@
 #define REG_COUNT 10
 #define TRANSACT_TIMEOUT 1
 
-static SPI_HandleTypeDef SPI;
 
-uint8_t NO_RESPONSE() { return 0xAA; }
+uint8_t NO_RESPONSE() { return 0x00; }
 void IGNORE_RESULT(uint8_t x) {}
 
-const static void(*result_table[REG_COUNT])(uint8_t) =
-{
-		IGNORE_RESULT,IGNORE_RESULT
-};
 const static uint8_t(*response_table[REG_COUNT])(void) =
 {
-		NO_RESPONSE,NO_RESPONSE
+		NO_RESPONSE,
+		NO_RESPONSE,
+		NO_RESPONSE,
+		NO_RESPONSE,
+		NO_RESPONSE,
+		NO_RESPONSE,
+		NO_RESPONSE,
+		NO_RESPONSE,
+		NO_RESPONSE,
+		NO_RESPONSE
 };
+const static void(*result_table[REG_COUNT])(uint8_t) =
+{
+		IGNORE_RESULT,
+		IGNORE_RESULT,
+		IGNORE_RESULT,
+		IGNORE_RESULT,
+		IGNORE_RESULT,
+		IGNORE_RESULT,
+		IGNORE_RESULT,
+		IGNORE_RESULT,
+		IGNORE_RESULT,
+		IGNORE_RESULT
+};
+
+
+static SPI_HandleTypeDef SPI;
+
 
 bool read_cs()
 {
@@ -48,7 +69,14 @@ int main()
 	while(1)
 	{
 
-		while(read_cs());  // Wait for request
+		while(read_cs())
+		{
+			// Wait for request and poll uart
+			if(fpoll(stdin, &chr_buf))
+			{
+				sts_reg |= (1<<5);
+			}
+		}
 		uint8_t reg;
 		HAL_StatusTypeDef status = HAL_SPI_Receive(&SPI, &reg, 1, TRANSACT_TIMEOUT);
 
