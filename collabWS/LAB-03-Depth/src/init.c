@@ -157,7 +157,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 		GPIO_InitTypeDef pinInit;
 		pinInit.Mode = GPIO_MODE_AF_PP;
 		pinInit.Alternate = GPIO_AF5_SPI2;
-		pinInit.Pull = GPIO_NOPULL;
+		pinInit.Pull = GPIO_PULLUP;
 		pinInit.Speed = GPIO_SPEED_LOW;
 
 		// PA12 -> SCK
