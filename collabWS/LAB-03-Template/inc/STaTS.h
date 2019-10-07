@@ -38,7 +38,7 @@ void STATS_useSPI(SPI_HandleTypeDef* h, GPIO_TypeDef* port, uint16_t pin);
 uint8_t STATS_status();
 void STATS_ctrl(uint8_t word);
 
-float STATS_getTempC();
+uint32_t STATS_getTempC();
 void STATS_putchar(char c);
 void STATS_setattr(uint8_t attr);
 char STATS_getchar();

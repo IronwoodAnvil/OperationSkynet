@@ -33,6 +33,7 @@ static uint8_t STaTS_readwrite(uint8_t reg, uint8_t write)
 	HAL_SPI_TransmitReceive(spi_conf.handle, &write, &result, 1, 1);
 
 	HAL_GPIO_WritePin(spi_conf.cs_port, spi_conf.cs_pin, GPIO_PIN_SET); // CS High
+	delay_us(10);
 
 	return result;
 }
@@ -58,19 +59,14 @@ void STATS_ctrl(uint8_t word)
 	STaTS_readwrite(2, word);
 }
 
-float STATS_getTempC()
+uint32_t STATS_getTempC()
 {
-	union {
-		uint16_t word;
-		struct { // STM32 is little endian
-			uint8_t low_byte;
-			uint8_t high_byte;
-		};
-	} result;
-	result.low_byte = STaTS_readwrite(5, 0);
-	result.high_byte = STaTS_readwrite(6, 0);
+	uint8_t low = STaTS_readwrite(5, 0);
+	uint8_t high = STaTS_readwrite(6, 0);
+	uint32_t result = (((uint16_t)high) << 8) | low;
+	result &= 0xFFF;
 
-	return 0.322 * result.word - 279;
+	return result;
 }
 void STATS_putchar(char c)
 {
@@ -112,7 +108,7 @@ buildno_t STATS_buildno()
 }
 uint8_t STATS_devID()
 {
-	return STaTS_readwrite(9, 0);
+	return STaTS_readwrite(9, 0xEE);
 }
 void STATS_newDevID(uint8_t id)
 {

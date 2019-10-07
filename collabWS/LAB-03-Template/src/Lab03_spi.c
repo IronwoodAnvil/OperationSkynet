@@ -54,12 +54,61 @@ int main(void)
 
 
 #elif LAB_TASK == 4
+	uint32_t tempC;
+	uint8_t id;
+	char a;
 	STATS_useSPI(&SPI_H, SPI_CS_PORT, SPI_CS_PIN);
+	buildno_t temp= STATS_buildno();
+	printf("Device version: %d.%d\r\n", temp.major, temp.minor);
 
+
+	bool menu = false;
+	while(1){
+
+		if(menu){
+			printf("Menu\r\n\nt) get temperature reading\r\n\ni) set id to 0xff\r\n\nr) reset terminal\r\n");
+			a =getchar();
+			if (a == 't'){
+				STATS_ctrl(STATS_CTL_RDTMP);
+				while (!(STATS_status() & STATS_STS_RDY)){
+				}
+				tempC = STATS_getTempC();
+				printf("Temperature: %lu\r\n", tempC);
+			}
+			else if(a == 'i'){
+				char b = STATS_devID();
+				id = 0xA1;
+				STATS_newDevID(id);
+				HAL_Delay(1);
+				char c = STATS_devID();
+
+				printf("Old Device ID was: %02X\r\n", b);
+				printf("New Device ID is: %02X\r\n\n",c);
+			}
+			else if(a == 'r'){
+				STATS_ctrl(STATS_CTL_TRMRST);
+			}
+			else{
+			}
+			fflush(stdout);
+			menu = false;
+		} else {
+			if(fpoll(stdin, &a))
+			{
+				if(a == 0x1B) menu = true;
+				else {
+					STATS_putchar(a);
+				}
+			}
+			if(STATS_poll(&a))
+			{
+				putchar(a);
+				fflush(stdout);
+			}
+			HAL_Delay(1);
+		}
+	}
 #endif
-
-// See 769 Description of HAL drivers.pdf, Ch. 58.2.3 or stm32f7xx_hal_spi.c
-//
-//	HAL_StatusTypeDef HAL_SPI_TransmitReceive(SPI_HandleTypeDef *hspi, uint8_t *pTxData, uint8_t *pRxData, uint16_t Size, uint32_t Timeout)
-//
 }
+
+
