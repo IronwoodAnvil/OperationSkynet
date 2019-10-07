@@ -77,6 +77,9 @@ void Sys_Init(void) {
 	HAL_Init();				// Initialize HAL
 	SystemClock_Config(); 	// Configure the system clock to 216 MHz
 
+	UART_InitTypeDef init = UART_CONF_DEFAULT;
+	init.BaudRate = 115200;
+	uart_stdiod(uart_fdopen(USART1, init));
 }
 
 // This function is what makes everything work
@@ -110,43 +113,6 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 		// Enable UART Clocking
 		__USART1_CLK_ENABLE();
 
-	} else if (huart->Instance == USART6) {
-		// Enable GPIO Clocks
-		__GPIOC_CLK_ENABLE();
-
-		// Initialize TX Pin
-		GPIO_InitStruct.Pin       = GPIO_PIN_6;
-		GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-		GPIO_InitStruct.Pull      = GPIO_PULLUP;
-		GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
-		GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
-		HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); //TX Config
-
-		// Initialize RX Pin
-		GPIO_InitStruct.Pin = GPIO_PIN_7;
-		HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); //RX Config
-
-		// Enable UART Clocking
-		__USART6_CLK_ENABLE();
-
-		huart->AdvancedInit.RxPinLevelInvert = UART_ADVFEATURE_RXINV_ENABLE;
-		huart->AdvancedInit.TxPinLevelInvert = UART_ADVFEATURE_TXINV_ENABLE;
-	}
-}
-
-void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
-{
-	if (huart->Instance == USART1) {
-		__USART1_CLK_DISABLE();
-		HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9);
-		HAL_GPIO_DeInit(GPIOA, GPIO_PIN_10);
-		//Don't disable clock, other pins might be in use
-	}
-	else if(huart->Instance == USART6) {
-		__USART6_CLK_DISABLE();
-		HAL_GPIO_DeInit(GPIOC, GPIO_PIN_6);
-		HAL_GPIO_DeInit(GPIOC, GPIO_PIN_7);
-		//Don't disable clock, other pins might be in use
 	}
 }
 
@@ -157,7 +123,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 void SPI_Init(SPI_HandleTypeDef* handle)
 {
 	handle->Instance = SPI2;
-	handle->Init.Mode = SPI_MODE_MASTER;
+	handle->Init.Mode = SPI_MODE_SLAVE;
 	handle->Init.TIMode = SPI_TIMODE_DISABLE;
 	//216e6 / 4 (APB Prescaler) / 64 (SPI Prescaler) = 843.75 kHz ~ 1 MHz
 	handle->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
@@ -166,7 +132,7 @@ void SPI_Init(SPI_HandleTypeDef* handle)
 	handle->Init.FirstBit = SPI_FIRSTBIT_LSB;
 	handle->Init.CLKPhase = SPI_PHASE_2EDGE;
 	handle->Init.CLKPolarity = SPI_POLARITY_HIGH;
-	handle->Init.NSS = SPI_NSS_HARD_OUTPUT;
+	handle->Init.NSS = SPI_NSS_HARD_INPUT;
 
 	HAL_SPI_Init(handle);
 }
@@ -207,10 +173,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 		HAL_GPIO_Init(GPIOB, &pinInit);
 
 		// PA11 -> CS (not using AF mode)
-		pinInit.Mode = GPIO_MODE_OUTPUT_PP;
-		pinInit.Pin = SPI_CS_PIN;
-		HAL_GPIO_Init(SPI_CS_PORT, &pinInit);
-
-		HAL_GPIO_WritePin(SPI_CS_PORT, SPI_CS_PIN, GPIO_PIN_SET);
+		pinInit.Pin = GPIO_PIN_11;
+		HAL_GPIO_Init(GPIOA, &pinInit);
 	}
 }
