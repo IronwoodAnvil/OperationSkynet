@@ -5,6 +5,8 @@
  *      Author: lovep
  *      		mascan
  */
+#include "init.h"
+#include <stdio.h>
 #include "Temperature_Sensor.h"
 
 uint8_t sts_reg = 0x00;
@@ -14,6 +16,8 @@ uint8_t tmp_hi = 0;
 
 int main()
 {
+
+	Sys_Init();
 	for(char i = 0; i <8 ; i++){
 		sts_reg[i] = 0;
 	}

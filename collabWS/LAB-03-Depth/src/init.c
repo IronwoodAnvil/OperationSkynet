@@ -79,7 +79,7 @@ void Sys_Init(void) {
 
 	UART_InitTypeDef init = UART_CONF_DEFAULT;
 	init.BaudRate = 115200;
-	uart_stdiod(uart_fdopen(USART1, init));
+	uart_stdiod(uart_fdopen(USART1, &init));
 }
 
 // This function is what makes everything work
