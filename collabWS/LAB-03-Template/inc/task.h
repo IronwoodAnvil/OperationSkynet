@@ -8,6 +8,6 @@
 #ifndef TASK_H_
 #define TASK_H_
 
-#define LAB_TASK 3
+#define LAB_TASK 4
 
 #endif /* TASK_H_ */

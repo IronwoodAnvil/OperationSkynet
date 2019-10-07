@@ -211,6 +211,6 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 		pinInit.Pin = SPI_CS_PIN;
 		HAL_GPIO_Init(SPI_CS_PORT, &pinInit);
 
-		HAL_GPIO_WritePin(SPI_CS_PORT, SPI_CS_PIN, GPIO_PIN_SET);
+        //HAL_GPIO_WritePin(SPI_CS_PORT, SPI_CS_PIN, GPIO_PIN_SET);
 	}
 }
