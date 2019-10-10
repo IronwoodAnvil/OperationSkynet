@@ -24,7 +24,7 @@ static void delay_us(uint32_t microseconds)
 static uint8_t STaTS_readwrite(uint8_t reg, uint8_t write)
 {
 	HAL_GPIO_WritePin(spi_conf.cs_port, spi_conf.cs_pin, GPIO_PIN_RESET); // CS Low
-
+	delay_us(5);
 	HAL_SPI_Transmit(spi_conf.handle, &reg, 1, 1);
 
 	delay_us(10);
@@ -34,7 +34,7 @@ static uint8_t STaTS_readwrite(uint8_t reg, uint8_t write)
 
 	HAL_GPIO_WritePin(spi_conf.cs_port, spi_conf.cs_pin, GPIO_PIN_SET); // CS High
 	delay_us(10);
-
+	HAL_Delay(100);
 	return result;
 }
 

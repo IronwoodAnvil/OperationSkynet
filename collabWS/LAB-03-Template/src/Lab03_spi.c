@@ -70,7 +70,7 @@ int main(void)
 			a =getchar();
 			if (a == 't'){
 				STATS_ctrl(STATS_CTL_RDTMP);
-				while (!(STATS_status() & STATS_STS_RDY)){
+				while (!(STATS_status() & STATS_STS_TRDY)){
 				}
 				tempC = STATS_getTempC();
 				printf("Temperature: %lu\r\n", tempC);
@@ -100,11 +100,11 @@ int main(void)
 					STATS_putchar(a);
 				}
 			}
-//			if(STATS_poll(&a))
-//			{
-//				putchar(a);
-//				fflush(stdout);
-//			}
+			if(STATS_poll(&a))
+			{
+				putchar(a);
+				fflush(stdout);
+			}
 			HAL_Delay(1);
 		}
 	}
