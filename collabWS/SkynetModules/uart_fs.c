@@ -104,16 +104,17 @@ static UART_HandleTypeDef* fd_to_handle(int file)
 
 // Make printf(), putchar(), etc. work over -̶U̶S̶B̶  BOTH UART (default USB)
 int _write(int file, char *ptr, int len) {
-	UART_HandleTypeDef* handle = fd_to_handle(file);
+	UART_HandleTypeDef* handle = fd_to_handle(file); // Turn the file descriptor into its associated HAL UART handle
 	if(handle){
 #if UART_FS_TX_USE_INTERRUPT
 		int id = fd_to_id(file);
-		while(tx_buf[id]); //Wait for running tx to complete
-		tx_buf[id] = malloc(len*sizeof(char));
+		while(tx_buf[id]); //Wait for any running tx to complete (currently no support for queued transmit buffers)
+		tx_buf[id] = malloc(len*sizeof(char)); // Need persistent buffer for transfer to read from
 		memcpy(tx_buf[id],ptr,len*sizeof(char));
 		HAL_UART_Transmit_IT(handle, (uint8_t*)tx_buf[id], len);
 		return len;
 #else
+		// Pretty much the basic transmission implementation
 		HAL_StatusTypeDef status = HAL_UART_Transmit(handle, (uint8_t*) ptr, len, 1000);
 		if(status==HAL_OK) return len;
 		else return -1;
@@ -161,9 +162,10 @@ int _close(int file) {
 
 #if UART_FS_INTERRUPT_MODE_ENABLED
 
+// Support for all the UART peripherals cause why not
 void USART1_IRQHandler()
 {
-	uart_fs_IRQHandler(USART1);
+	uart_fs_IRQHandler(USART1); // This simply looks up the right handle to pass to the HAL UART IRQHandler
 }
 void USART2_IRQHandler()
 {
@@ -196,25 +198,26 @@ void UART8_IRQHandler()
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef* handle)
 {
-	int id = findHandle(handle);
+	int id = findHandle(handle); // Lookup which uart this is
 	if(id < 0 || id >= FD_TAB_SIZE)
 	{
 		while(1);
 	}
 	if(callback_tab[id])
 	{
-		callback_tab[id]();
+		callback_tab[id](); // Pass to callback
 	}
 }
 
 #if UART_FS_TX_USE_INTERRUPT
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef* handle)
 {
-	int id = findHandle(handle);
+	int id = findHandle(handle); // Lookup which uart this is
 	if(id < 0 || id >= FD_TAB_SIZE)
 	{
 		while(1);
 	}
+	// Free the transmit buffer and null it out (inform a pending transmit that this one is done)
 	free(tx_buf[id]);
 	tx_buf[id] = NULL;
 }
@@ -241,17 +244,18 @@ int uart_fdopen(USART_TypeDef* reg, UART_InitTypeDef* config)
 
 	while(*handle_pos) ++handle_pos, ++fd; // Find free file descriptor
 
-	UART_HandleTypeDef* handle = malloc(sizeof(UART_HandleTypeDef));
-	memset(handle,0,sizeof(UART_HandleTypeDef));
+	UART_HandleTypeDef* handle = malloc(sizeof(UART_HandleTypeDef)); // Create handle for this file descriptor
+	memset(handle,0,sizeof(UART_HandleTypeDef)); // malloced structs are not initialized unlike global structs
 	*handle_pos = handle;
 
+	// Configure handle for init
 	handle->Instance = reg;
 	memcpy(&handle->Init,config,sizeof(UART_InitTypeDef));
 
-	HAL_UART_Init(handle);
+	HAL_UART_Init(handle); // Init the UART
 
 #if UART_FS_INTERRUPT_MODE_ENABLED
-	NVIC_EnableIRQ(USART_IRQn(reg));
+	NVIC_EnableIRQ(USART_IRQn(reg)); // Enable the appropriate NVIC interrupt vector if in interrupt mode
 #endif
 
 	return fd;
