@@ -30,18 +30,18 @@ uint8_t tmp_hi = 0;
 
 bool read_cs()
 {
-	return HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11);
+	return HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11); //looks at CS pin
 }
 
 void tempTask(){
 	static int sum = 0;
 	static int samples = 0;
-	if(sts_reg & (1<<2))
+	if(sts_reg & (1<<2)) //temperature measurement is currently underway.
 	{
-		int result = getTemperature();
-		if (result == 0){
-			sts_reg |= 1<<1;
-			sts_reg |= 1<<3;
+		int result = getTemperature();  //grab from fn given in template
+		if (result == 0){ //error
+			sts_reg |= 1<<1;  //FLT
+			sts_reg |= 1<<3; //trdy
 			return;
 		}
 		sum += result;
@@ -55,8 +55,8 @@ void tempTask(){
 			tmp_lo = temp & 0xFF;
 			tmp_hi = temp >> 8;
 
-			sts_reg &= ~(1<<2);
-			sts_reg |= 1<<3;
+			sts_reg &= ~(1<<2); // not busy
+			sts_reg |= 1<<3; //trdy
 
 			sum = samples = 0;
 		}

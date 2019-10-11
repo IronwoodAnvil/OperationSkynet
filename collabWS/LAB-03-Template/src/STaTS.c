@@ -25,16 +25,16 @@ static uint8_t STaTS_readwrite(uint8_t reg, uint8_t write)
 {
 	HAL_GPIO_WritePin(spi_conf.cs_port, spi_conf.cs_pin, GPIO_PIN_RESET); // CS Low
 	delay_us(5);
-	HAL_SPI_Transmit(spi_conf.handle, &reg, 1, 1);
+	HAL_SPI_Transmit(spi_conf.handle, &reg, 1, 1); //send register to be read/written
 
 	delay_us(10);
 
 	uint8_t result;
-	HAL_SPI_TransmitReceive(spi_conf.handle, &write, &result, 1, 1);
+	HAL_SPI_TransmitReceive(spi_conf.handle, &write, &result, 1, 1); //read /write to register
 
 	HAL_GPIO_WritePin(spi_conf.cs_port, spi_conf.cs_pin, GPIO_PIN_SET); // CS High
 	delay_us(10);
-	HAL_Delay(100);
+	//HAL_Delay(100);
 	return result;
 }
 
@@ -44,7 +44,7 @@ static uint8_t STaTS_readwrite(uint8_t reg, uint8_t write)
 
 void STATS_useSPI(SPI_HandleTypeDef* h, GPIO_TypeDef* port, uint16_t pin)
 {
-	spi_conf.handle = h;
+	spi_conf.handle = h;    //struct for ease of use
 	spi_conf.cs_port = port;
 	spi_conf.cs_pin = pin;
 }
@@ -52,17 +52,17 @@ void STATS_useSPI(SPI_HandleTypeDef* h, GPIO_TypeDef* port, uint16_t pin)
 
 uint8_t STATS_status()
 {
-	return STaTS_readwrite(3, 0);
+	return STaTS_readwrite(3, 0); //STS_REG
 }
 void STATS_ctrl(uint8_t word)
 {
-	STaTS_readwrite(2, word);
+	STaTS_readwrite(2, word); //CTL_REG
 }
 
 uint32_t STATS_getTempC()
 {
-	uint8_t low = STaTS_readwrite(5, 0);
-	uint8_t high = STaTS_readwrite(6, 0);
+	uint8_t low = STaTS_readwrite(5, 0); //TMP_LO
+	uint8_t high = STaTS_readwrite(6, 0); //TMP_HI
 	uint32_t result = (((uint16_t)high) << 8) | low;
 	result &= 0xFFF;
 
@@ -70,11 +70,11 @@ uint32_t STATS_getTempC()
 }
 void STATS_putchar(char c)
 {
-	STaTS_readwrite(7, c);
+	STaTS_readwrite(7, c); //CH_BUF
 }
 void STATS_setattr(uint8_t attr)
 {
-	STaTS_readwrite(8, attr);
+	STaTS_readwrite(8, attr); //TXT_ATTR
 }
 char STATS_getchar()
 {
@@ -82,13 +82,13 @@ char STATS_getchar()
 	{
 		HAL_Delay(1);
 	}
-	return STaTS_readwrite(7, 0);
+	return STaTS_readwrite(7, 0); //CH_BUF
 }
 bool STATS_poll(char* c)
 {
 	if(STATS_available())
 	{
-		*c = STaTS_readwrite(7, 0);
+		*c = STaTS_readwrite(7, 0); //CH_BUF
 		return true;
 	}
 	else{
@@ -97,21 +97,21 @@ bool STATS_poll(char* c)
 }
 uint8_t STATS_available()
 {
-	return (STATS_status()&STATS_STS_NHCBF) >> 5;
+	return (STATS_status()&STATS_STS_NHCBF) >> 5; //character in buffer
 }
 buildno_t STATS_buildno()
 {
 	buildno_t result;
-	result.major = STaTS_readwrite(0, 0);
-	result.minor = STaTS_readwrite(1, 0);
+	result.major = STaTS_readwrite(0, 0); //V_MAJ
+	result.minor = STaTS_readwrite(1, 0); //V_MIN
 	return result;
 }
 uint8_t STATS_devID()
 {
-	return STaTS_readwrite(9, 0xEE);
+	return STaTS_readwrite(9, 0xEE); //DEVID
 }
 void STATS_newDevID(uint8_t id)
 {
-	STATS_ctrl(STATS_CTL_ULKDID);
-	STaTS_readwrite(9, id);
+	STATS_ctrl(STATS_CTL_ULKDID); //unlock devid to be written, should auto-lock after
+	STaTS_readwrite(9, id); //DEVID
 }

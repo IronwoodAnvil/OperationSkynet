@@ -57,9 +57,9 @@ int main(void)
 	uint32_t tempC;
 	uint8_t id;
 	char a;
-	STATS_useSPI(&SPI_H, SPI_CS_PORT, SPI_CS_PIN);
+	STATS_useSPI(&SPI_H, SPI_CS_PORT, SPI_CS_PIN); //struct to hold cs pin, handler
 	buildno_t temp= STATS_buildno();
-	printf("Device version: %d.%d\r\n", temp.major, temp.minor);
+	printf("Device version: %d.%d\r\n", temp.major, temp.minor); //device version
 
 
 	bool menu = false;
@@ -69,16 +69,16 @@ int main(void)
 			printf("Menu\r\n\nt) get temperature reading\r\n\ni) set id to 0xff\r\n\nr) reset terminal\r\n");
 			a =getchar();
 			if (a == 't'){
-				STATS_ctrl(STATS_CTL_RDTMP);
-				while (!(STATS_status() & STATS_STS_TRDY)){
+				STATS_ctrl(STATS_CTL_RDTMP); //tell the slave to read temp
+				while (!(STATS_status() & STATS_STS_TRDY)){ //wait for trdy to set high
 				}
-				tempC = STATS_getTempC();
+				tempC = STATS_getTempC(); //read registers
 				printf("Temperature: %lu\r\n", tempC);
 			}
 			else if(a == 'i'){
-				char b = STATS_devID();
+				char b = STATS_devID(); //get old devid
 				id = 0xA1;
-				STATS_newDevID(id);
+				STATS_newDevID(id); //set new dev id
 				HAL_Delay(1);
 				char c = STATS_devID();
 
@@ -86,26 +86,26 @@ int main(void)
 				printf("New Device ID is: %02X\r\n\n",c);
 			}
 			else if(a == 'r'){
-				STATS_ctrl(STATS_CTL_TRMRST);
+				STATS_ctrl(STATS_CTL_TRMRST); // reset terminal of slave
 			}
 			else{
 			}
-			fflush(stdout);
+			fflush(stdout); // always floss.
 			menu = false;
 		} else {
-			if(fpoll(stdin, &a))
+			if(fpoll(stdin, &a))// read master terminal using uart magic
 			{
-				if(a == 0x1B) menu = true;
+				if(a == 0x1B) menu = true; //if <esc> set menu flag
 				else {
-					STATS_putchar(a);
+					STATS_putchar(a); //it puts the character on the slave, or it gets the hose again
 				}
 			}
-			if(STATS_poll(&a))
+			if(STATS_poll(&a)) // read slave using uart magic libaray
 			{
 				putchar(a);
 				fflush(stdout);
 			}
-			HAL_Delay(1);
+			HAL_Delay(1); //reduce number of transactions, this isnt high speed
 		}
 	}
 #endif
