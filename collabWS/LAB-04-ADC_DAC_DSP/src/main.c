@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include "task.h"
 
+#define ADC_TO_VOLTS(adc) ((3.3/4095.0)*(adc))
+
 // Main Execution Loop
 int main(void)
 {
@@ -17,6 +19,48 @@ int main(void)
 	// Code goes here
 
 #if LAB_TASK == 1
+	ADC_HandleTypeDef hadc;
+	ADC1_Init(&hadc);
+
+	__HAL_RCC_GPIOA_CLK_ENABLE(); // This was actually done in the ADC MSP Init, but it isn't clear, so we do it again
+	GPIO_InitTypeDef btn_conf;
+	btn_conf.Pin = GPIO_PIN_0;
+	btn_conf.Mode = GPIO_MODE_INPUT;
+	btn_conf.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOA, &btn_conf);
+
+	uint16_t history[16] = {0};
+	uint32_t h_id = 0;
+	uint32_t sum16 = 0;
+
+	float max_v = -1;
+	float min_v = 5;
+
+
+	while(1)
+	{
+		while(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0));
+		uint32_t tickstart = HAL_GetTick();
+
+		HAL_ADC_Start(&hadc);
+		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
+		uint16_t conv = HAL_ADC_GetValue(&hadc);
+
+		sum16 -= history[h_id];
+		sum16 += conv;
+		history[h_id] = conv;
+		h_id = (h_id+1)%16;
+
+		float conv_v = ADC_TO_VOLTS(conv);
+		if(conv_v > max_v) max_v = conv_v;
+		if(conv_v < min_v) min_v = conv_v;
+
+		printf("Raw: %u\tVolts: %f\tHigh: %f\t Low: %f\tAvg: %f\r\n",conv,conv_v,max_v,min_v,ADC_TO_VOLTS(sum16>>4));
+
+		while(HAL_GetTick() < tickstart+20); // Wait for any remaining debounce for press
+		while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)); // Wait for release
+		HAL_Delay(20); // Debounce release
+	}
 
 #elif LAB_TASK == 2
 

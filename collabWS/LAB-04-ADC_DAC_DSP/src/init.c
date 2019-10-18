@@ -96,6 +96,45 @@ void SysTick_Handler(void) {
   HAL_IncTick();
 }
 
+// LAB TASK INITIALIZATIONS
+
+#include "task.h"
+
+void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
+{
+
+	if(hadc->Instance == ADC1)
+	{
+		// Arduino A0, PA6, ADC1_IN6
+		__HAL_RCC_ADC1_CLK_ENABLE();
+		__HAL_RCC_GPIOA_CLK_ENABLE();
+
+		GPIO_InitTypeDef pin_init;
+		pin_init.Pin = GPIO_PIN_6;
+		pin_init.Mode = GPIO_MODE_ANALOG;
+
+		HAL_GPIO_Init(GPIOA, &pin_init);
+	}
+}
+
+void ADC1_Init(ADC_HandleTypeDef* handle)
+{
+	memset(handle, 0, sizeof(ADC_HandleTypeDef));
+	handle->Instance = ADC1;
+	handle->Init.Resolution = ADC_RESOLUTION_12B;
+	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	handle->Init.ScanConvMode = ADC_SCAN_DISABLE;
+	handle->Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+
+	HAL_ADC_Init(handle);
+
+	ADC_ChannelConfTypeDef channel;
+	channel.Channel = ADC_CHANNEL_6;
+	channel.Rank = 1;
+	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+
+	HAL_ADC_ConfigChannel(handle, &channel);
+}
 
 #if 0
 void configureADC()
@@ -123,10 +162,4 @@ void configureADC()
 }
 
 
-void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
-{
-
-// GPIO init
-
-}
 #endif
