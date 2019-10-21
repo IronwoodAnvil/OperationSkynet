@@ -4,6 +4,7 @@
 //
 //
 
+#include <iir_filt.h>
 #include "init.h"
 
 #include <stdint.h>
@@ -55,7 +56,8 @@ int main(void)
 		if(conv_v > max_v) max_v = conv_v;
 		if(conv_v < min_v) min_v = conv_v;
 
-		printf("Raw: %u\tVolts: %f\tHigh: %f\t Low: %f\tAvg: %f\r\n",conv,conv_v,max_v,min_v,ADC_TO_VOLTS(sum16>>4));
+		//Double casts are to suppress warnings
+		printf("Raw: %u\tVolts: %f\tHigh: %f\t Low: %f\tAvg: %f\r\n",conv,(double)conv_v,(double)max_v,(double)min_v,(double)ADC_TO_VOLTS(sum16>>4));
 
 		while(HAL_GetTick() < tickstart+20); // Wait for any remaining debounce for press
 		while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)); // Wait for release
@@ -108,6 +110,34 @@ int main(void)
 #endif
 
 #elif LAB_TASK == 4
+
+	ADC_HandleTypeDef hadc;
+	ADC1_Init(&hadc);
+	ADC1->CR2 |= ADC_CR2_CONT; // Go continuous mode
+    HAL_ADC_Start(&hadc);
+
+#if SUB_TASK == 1
+
+	uint16_t filter = 0;
+	uint16_t history[4] = {0};
+	uint32_t t = 0;
+
+#define X(n) (history[(n)&0x03])
+
+	while(1)
+	{
+		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
+		X(t) = HAL_ADC_GetValue(&hadc);
+		filter = 0.312500f*X(t) + 0.240385f*X(t-1) + 0.312500f*X(t-2) + 0.296875f*filter;
+		printf("%u\t%u\r\n",X(t),filter);
+		++t;
+	}
+
+#elif SUB_TASK == 2
+
+	iir_asm_filt(hadc.Instance, NULL);
+
+#endif
 
 #elif LAB_TASK == 5
 

@@ -124,7 +124,6 @@ void ADC1_Init(ADC_HandleTypeDef* handle)
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
 	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	handle->Init.ScanConvMode = ADC_SCAN_DISABLE;
-	handle->Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 
 	HAL_ADC_Init(handle);
 
