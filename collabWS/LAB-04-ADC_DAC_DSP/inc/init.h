@@ -10,5 +10,6 @@ void SystemClock_Config(void);
 void CPU_CACHE_Enable(void);
 void Sys_Init(void);
 void ADC1_Init(ADC_HandleTypeDef* handle);
+void DAC1_Init(DAC_HandleTypeDef* hdac);
 
 #endif
