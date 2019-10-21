@@ -63,6 +63,16 @@ int main(void)
 	}
 
 #elif LAB_TASK == 2
+	DAC_HandleTypeDef hdac;
+	DAC1_Init(&hdac);
+
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+	while(1){
+		for(uint32_t x = 0; x<4096; x++){
+			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, x);
+
+		}
+	}
 
 #elif LAB_TASK == 3
 
