@@ -121,16 +121,28 @@ void ADC1_Init(ADC_HandleTypeDef* handle)
 {
 	memset(handle, 0, sizeof(ADC_HandleTypeDef));
 	handle->Instance = ADC1;
+#if LAB_TASK != 5
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
+#else
+	handle->Init.Resolution = ADC_RESOLUTION_6B; // Lowest resolution = MAX SPEED
+#endif
+
 	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	handle->Init.ScanConvMode = ADC_SCAN_DISABLE;
+#if LAB_TASK != 1
+	handle->Init.ContinuousConvMode = ENABLE;
+#endif
 
 	HAL_ADC_Init(handle);
 
 	ADC_ChannelConfTypeDef channel;
 	channel.Channel = ADC_CHANNEL_6;
 	channel.Rank = 1;
+#if LAB_TASK == 1
 	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+#else
+	channel.SamplingTime = ADC_SAMPLETIME_2CYCLE_5; // Maximum Speed!!! (We should have a strong signal from generator so okay)
+#endif
 
 	HAL_ADC_ConfigChannel(handle, &channel);
 }

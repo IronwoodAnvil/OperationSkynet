@@ -80,11 +80,11 @@ int main(void)
 
 #if SUB_TASK == 1
 
-	asm("mov r9, #2718		\r\n"
-		"mov r10, #31415	\r\n"
-		"add r9, r9, r10");
+	asm("mov r6, #2718		\r\n"
+		"mov r7, #31415	\r\n"
+		"add r6, r6, r7");
 	int32_t result;
-	asm("str r9, %0"
+	asm("str r6, %0"
 			: "=m" (result));
 	printf("%d+%d = %ld\r\n",2718,31415,result);
 
@@ -123,8 +123,11 @@ int main(void)
 
 	ADC_HandleTypeDef hadc;
 	ADC1_Init(&hadc);
-	ADC1->CR2 |= ADC_CR2_CONT; // Go continuous mode
     HAL_ADC_Start(&hadc);
+
+	DAC_HandleTypeDef hdac;
+	DAC1_Init(&hdac);
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
 #if SUB_TASK == 1
 
@@ -139,13 +142,14 @@ int main(void)
 		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
 		X(t) = HAL_ADC_GetValue(&hadc);
 		filter = 0.312500f*X(t) + 0.240385f*X(t-1) + 0.312500f*X(t-2) + 0.296875f*filter;
-		printf("%u\t%u\r\n",X(t),filter);
+		if(filter >= 1<<12) filter = (1<<12) - 1; // Saturate to 12 bits
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, filter);
 		++t;
 	}
 
 #elif SUB_TASK == 2
 
-	iir_asm_filt(hadc.Instance, NULL);
+	iir_asm_filt(hadc.Instance, hdac.Instance);
 
 #endif
 

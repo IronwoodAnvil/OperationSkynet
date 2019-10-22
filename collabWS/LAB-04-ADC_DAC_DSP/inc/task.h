@@ -9,6 +9,6 @@
 #define TASK_H_
 
 #define LAB_TASK 4
-#define SUB_TASK 2
+#define SUB_TASK 1
 
 #endif /* TASK_H_ */
