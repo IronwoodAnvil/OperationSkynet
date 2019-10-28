@@ -78,7 +78,6 @@ int main(void)
 		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
 		uint16_t conv = HAL_ADC_GetValue(&hadc);
 		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, conv);
-		}
 	}
 
 #elif LAB_TASK == 3
