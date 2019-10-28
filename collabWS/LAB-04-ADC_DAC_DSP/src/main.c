@@ -68,11 +68,16 @@ int main(void)
 	DAC_HandleTypeDef hdac;
 	DAC1_Init(&hdac);
 
+	ADC_HandleTypeDef hadc;
+	ADC1_Init(&hadc);
+	HAL_ADC_Start(&hadc);
+
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 	while(1){
-		for(uint32_t x = 0; x<4096; x++){
-			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, x);
 
+		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
+		uint16_t conv = HAL_ADC_GetValue(&hadc);
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, conv);
 		}
 	}
 
@@ -116,6 +121,20 @@ int main(void)
 	while(1);
 
 #elif SUB_TASK == 2
+	asm("mov r6, #8675		\r\n"
+			"mov r7, #309	\r\n"
+			"add r6, r6, r7");
+		int32_t result;
+		asm("str r6, %0"
+				: "=m" (result));
+		printf("%d+%d = %ld\r\n",8675,309,result);
+
+		int16_t v1 = 8675;
+		int16_t v2 = 309;
+		asm(" %0, %1, %2"
+				: "=r" (result) : "r" (v1), "r" (v2));
+		printf("%d*%d = %ld\r\n",v1,v2,result);
+
 
 #endif
 
@@ -139,6 +158,7 @@ int main(void)
 
 	while(1)
 	{
+
 		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
 		X(t) = HAL_ADC_GetValue(&hadc);
 		filter = 0.312500f*X(t) + 0.240385f*X(t-1) + 0.312500f*X(t-2) + 0.296875f*filter;
