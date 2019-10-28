@@ -121,14 +121,14 @@ void ADC1_Init(ADC_HandleTypeDef* handle)
 {
 	memset(handle, 0, sizeof(ADC_HandleTypeDef));
 	handle->Instance = ADC1;
+	handle->Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4; // 27 MHz < 36 MHz
+	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	handle->Init.ScanConvMode = ADC_SCAN_DISABLE;
 #if LAB_TASK != 5
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
 #else
 	handle->Init.Resolution = ADC_RESOLUTION_6B; // Lowest resolution = MAX SPEED
 #endif
-
-	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	handle->Init.ScanConvMode = ADC_SCAN_DISABLE;
 #if LAB_TASK != 1
 	handle->Init.ContinuousConvMode = ENABLE;
 #endif
@@ -141,7 +141,7 @@ void ADC1_Init(ADC_HandleTypeDef* handle)
 #if LAB_TASK == 1
 	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES;
 #else
-	channel.SamplingTime = ADC_SAMPLETIME_2CYCLE_5; // Maximum Speed!!! (We should have a strong signal from generator so okay)
+	channel.SamplingTime = ADC_SAMPLETIME_3CYCLES; // Maximum Speed!!! (We should have a strong signal from generator so okay)
 #endif
 
 	HAL_ADC_ConfigChannel(handle, &channel);
@@ -179,32 +179,3 @@ void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
 		HAL_GPIO_Init(GPIOA, &pin_init);
 	}
 }
-
-
-#if 0
-void configureADC()
-{
-	// Enable the ADC Clock.
-
-	HAL_ADC_Init(...); // Initialize the ADC
-
-	/* Available sampling times:
-
-		ADC_SAMPLETIME_3CYCLES
-	  ADC_SAMPLETIME_15CYCLES
-		ADC_SAMPLETIME_28CYCLES
-		ADC_SAMPLETIME_56CYCLES
-		ADC_SAMPLETIME_84CYCLES
-		ADC_SAMPLETIME_112CYCLES
-		ADC_SAMPLETIME_144CYCLES
-		ADC_SAMPLETIME_480CYCLES
-
-	*/
-
-	// Configure the ADC channel
-
-	HAL_ADC_ConfigChannel(...,...);
-}
-
-
-#endif
