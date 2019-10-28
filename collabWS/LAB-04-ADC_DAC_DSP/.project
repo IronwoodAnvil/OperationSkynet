@@ -29,7 +29,7 @@
 		<link>
 			<name>stm32lib</name>
 			<type>2</type>
-			<locationURI>STM32LIB_LOC</locationURI>
+			<location>C:/Users/mascan/STM32CubeIDE/fromGit/nateWS/LAB-01-Template/stm32lib</location>
 		</link>
 	</linkedResources>
 	<variableList>

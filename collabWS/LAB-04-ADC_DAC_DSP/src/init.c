@@ -141,7 +141,7 @@ void ADC1_Init(ADC_HandleTypeDef* handle)
 #if LAB_TASK == 1
 	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES;
 #else
-	channel.SamplingTime = ADC_SAMPLETIME_2CYCLE_5; // Maximum Speed!!! (We should have a strong signal from generator so okay)
+	channel.SamplingTime = ADC_SAMPLETIME_3CYCLES; // Maximum Speed!!! (We should have a strong signal from generator so okay)
 #endif
 
 	HAL_ADC_ConfigChannel(handle, &channel);
