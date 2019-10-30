@@ -113,21 +113,38 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 		pin_init.Pin = GPIO_PIN_6;
 		pin_init.Mode = GPIO_MODE_ANALOG;
 
+		HAL_NVIC_EnableIRQ(ADC_IRQn);
+
 		HAL_GPIO_Init(GPIOA, &pin_init);
 	}
+	else if(hadc->Instance == ADC3)
+	{
+		__HAL_RCC_ADC3_CLK_ENABLE();
+		__HAL_RCC_GPIOF_CLK_ENABLE();
+
+		//Arduino A3, PF10, ADC3_IN8
+		GPIO_InitTypeDef pin_init;
+		pin_init.Pin = GPIO_PIN_10;
+		pin_init.Mode = GPIO_MODE_ANALOG;
+
+		HAL_GPIO_Init(GPIOF, &pin_init);
+	}
+#if LAB_TASK==5
+	HAL_NVIC_EnableIRQ(ADC_IRQn);
+#endif
 }
 
-void ADC1_Init(ADC_HandleTypeDef* handle)
+void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 {
 	memset(handle, 0, sizeof(ADC_HandleTypeDef));
-	handle->Instance = ADC1;
+	handle->Instance = instance;
 	handle->Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4; // 27 MHz < 36 MHz
 	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	handle->Init.ScanConvMode = ADC_SCAN_DISABLE;
 #if LAB_TASK != 5
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
 #else
-	handle->Init.Resolution = ADC_RESOLUTION_6B; // Lowest resolution = MAX SPEED
+	handle->Init.Resolution = ADC_RESOLUTION_8B; // Lowest resolution = MAX SPEED
 #endif
 #if LAB_TASK != 1
 	handle->Init.ContinuousConvMode = ENABLE;
@@ -136,7 +153,8 @@ void ADC1_Init(ADC_HandleTypeDef* handle)
 	HAL_ADC_Init(handle);
 
 	ADC_ChannelConfTypeDef channel;
-	channel.Channel = ADC_CHANNEL_6;
+	if(instance == ADC1) channel.Channel = ADC_CHANNEL_6;
+	else if(instance == ADC3) channel.Channel = ADC_CHANNEL_8;
 	channel.Rank = 1;
 #if LAB_TASK == 1
 	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES;
@@ -167,7 +185,7 @@ void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
 {
 	if(hdac->Instance == DAC1)
 	{
-		// Arduino A, PA4, DAC_OUT_1
+		// Arduino A1, PA4, DAC_OUT_1
 		__HAL_RCC_DAC_CLK_ENABLE();
 		__HAL_RCC_GPIOA_CLK_ENABLE();
 

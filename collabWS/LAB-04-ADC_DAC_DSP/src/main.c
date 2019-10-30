@@ -12,6 +12,36 @@
 
 #define ADC_TO_VOLTS(adc) ((3.3/4095.0)*(adc))
 
+
+
+#if LAB_TASK == 5
+
+ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
+
+#define DC_OFFSET (1<<7)
+
+// 9th bit used as the waiting flag
+#define ADC_VAL_WAITING (1<<9)
+volatile uint32_t adc1_val = ADC_VAL_WAITING;
+volatile uint32_t adc2_val = ADC_VAL_WAITING;
+
+void ADC_IRQHandler()
+{
+	if(__HAL_ADC_GET_FLAG(&hadc1,ADC_SR_EOC)) // ADC 1 Value
+	{
+		adc1_val = HAL_ADC_GetValue(&hadc1); // Clears EOC flag
+	}
+	else if(__HAL_ADC_GET_FLAG(&hadc2,ADC_SR_EOC)) // ADC 2 Value
+	{
+		adc2_val = HAL_ADC_GetValue(&hadc2);
+	}
+}
+
+
+#endif
+
+
 // Main Execution Loop
 int main(void)
 {
@@ -21,7 +51,7 @@ int main(void)
 
 #if LAB_TASK == 1
 	ADC_HandleTypeDef hadc;
-	ADC1_Init(&hadc);
+	ADC_Init(ADC1, &hadc);
 
 	__HAL_RCC_GPIOA_CLK_ENABLE(); // This was actually done in the ADC MSP Init, but it isn't clear, so we do it again
 	GPIO_InitTypeDef btn_conf;
@@ -69,14 +99,21 @@ int main(void)
 	DAC1_Init(&hdac);
 
 	ADC_HandleTypeDef hadc;
-	ADC1_Init(&hadc);
+	ADC_Init(ADC1, &hadc);
 	HAL_ADC_Start(&hadc);
 
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-	while(1){
 
+	uint32_t count = 0;
+	while(1){
+#if SUB_TASK == 2
 		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
 		uint16_t conv = HAL_ADC_GetValue(&hadc);
+#elif SUB_TASK == 1
+		uint16_t conv = count;
+		++count;
+		if(count > 4095) count = 0;
+#endif
 		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, conv);
 	}
 
@@ -140,7 +177,7 @@ int main(void)
 #elif LAB_TASK == 4
 
 	ADC_HandleTypeDef hadc;
-	ADC1_Init(&hadc);
+	ADC_Init(ADC1, &hadc);
     HAL_ADC_Start(&hadc);
 
 	DAC_HandleTypeDef hdac;
@@ -174,5 +211,53 @@ int main(void)
 
 #elif LAB_TASK == 5
 
+	// See globals and interrupt stuff at top
+
+	ADC_Init(ADC1, &hadc1);
+	ADC_Init(ADC3, &hadc2);
+
+	DAC_HandleTypeDef hdac;
+	DAC1_Init(&hdac);
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+
+	// Store in float to avoid need to reconvert whenever used
+	float x_history[4] = {0};
+	float y_history[4] = {0};
+	uint32_t t = 0;
+
+#define X(t) (x_history[(t)&0x3])
+#define Y(t) (y_history[(t)&0x3])
+
+	HAL_ADC_Start_IT(&hadc1);
+	HAL_ADC_Start_IT(&hadc2);
+
+	while(1)
+	{
+		// Wait for both values
+		while( (adc1_val & ADC_VAL_WAITING) || (adc2_val & ADC_VAL_WAITING) );
+
+		float Xt = (adc1_val-DC_OFFSET) * (adc2_val-DC_OFFSET);
+
+		float Yt =
+				0.001f*Xt - 0.002f*X(t-2) + 0.001f*X(t-4)
+				+ 3.166f*Y(t-1) - 4.418f*Y(t-2) + 3.028f*Y(t-3) - 0.915f*Y(t-4);
+
+		int32_t out = ((int32_t)Yt)+DC_OFFSET;
+		// Saturation
+		if(out < 0) out = 0;
+		if(out > 255) out = 255;
+
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_8B_R, out);
+
+		adc1_val = adc2_val = ADC_VAL_WAITING; // Set waiting flags (wait to do this so DAC is set ASAP)
+		// Must do after eval since this overwrites X(t-4) which is actually the same spot in circ buff
+		Y(t) = Yt;
+		X(t) = Xt;
+		++t;
+
+		printf("X: %lX\tY: %lX\r\n",(double)Xt,(double)Yt);
+	}
+
 #endif
 }
+
