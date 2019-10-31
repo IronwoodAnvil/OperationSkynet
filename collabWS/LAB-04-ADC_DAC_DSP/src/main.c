@@ -120,19 +120,40 @@ int main(void)
 	while(1);
 
 #elif SUB_TASK == 2
+	int32_t result1;
 	asm("mov r6, #8675		\r\n"
-			"mov r7, #309	\r\n"
-			"add r6, r6, r7");
-		int32_t result;
-		asm("str r6, %0"
-				: "=m" (result));
-		printf("%d+%d = %ld\r\n",8675,309,result);
+		"mov r7, #309	\r\n"
+		"add r6, r6, r7");
+	asm("str r6, %0"
+			: "=m" (result1));
+	printf("%d+%d = %ld\r\n",8675,309,result1);
 
-		int16_t v1 = 8675;
-		int16_t v2 = 309;
-		asm(" %0, %1, %2"
-				: "=r" (result) : "r" (v1), "r" (v2));
-		printf("%d*%d = %ld\r\n",v1,v2,result);
+	float result;
+	float v1 = 8675.309;
+	float v2 = 525.600;
+	asm("VMUL.F32 %0, %1, %2"
+			: "=t" (result) : "t" (v1), "t" (v2));
+	printf("%f*%f = %f\r\n",v1,v2,result);
+
+	//evaluate the equation 2x/3 + 5 through floating point addition (VADD), multiplication (VMUL), and division (VDIV)
+	float x = 3;
+	asm("vmov %[w], %[x]		\r\n" // x
+		"vmul.f32 %[w], %[n2]	\r\n" // Multiply by 2
+		"vdiv.f32 %[w], %[w], %[n3]	\r\n" // Divide by 3
+		"vadd.f32 %[w], %[n4], %[w]	\r\n" // Add 5
+			: [w] "+t" (result)
+			: [x] "t" (x), [n3] "t" (3.0f), [n2] "t" (2.0f), [n4] "t" (5.0f));
+	printf("[MUL] %f*2/3 + 5 = %f\r\n", x, result);
+
+	result = 0; // Prove that actual result is regenerated
+
+		asm("vmov %[w], %[n4]		\r\n" // 15
+			"vmla.f32 %[w], %[x], %[n2] \r\n" //x * 2 added to 15
+			"vdiv.f32 %[w], %[w], %[n3]	\r\n" // Divide by 3
+				: [w] "+t" (result)
+				: [x] "t" (x), [n3] "t" (3.0f), [n2] "t" (2.0f), [n4] "t" (15.0f));
+		printf("[MUL2] %f*2/3 + 5 = %f\r\n", x, result);
+
 
 
 #endif
