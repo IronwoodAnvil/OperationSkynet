@@ -19,23 +19,25 @@
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 
-#define DC_OFFSET (1<<7)
+#define DC_OFFSET (1<<11)
 
 // 9th bit used as the waiting flag
-#define ADC_VAL_WAITING (1<<9)
+#define ADC_VAL_WAITING (1<<12)
 volatile uint32_t adc1_val = ADC_VAL_WAITING;
 volatile uint32_t adc2_val = ADC_VAL_WAITING;
 
 void ADC_IRQHandler()
 {
-	if(__HAL_ADC_GET_FLAG(&hadc1,ADC_SR_EOC)) // ADC 1 Value
+//	printf("0x%02X 0x%02X\r\n", hadc1.Instance->SR, hadc2.Instance->SR);
+	if(hadc1.Instance->SR & ADC_SR_EOC) // ADC 1 Value
 	{
-		adc1_val = HAL_ADC_GetValue(&hadc1); // Clears EOC flag
+		adc1_val = hadc1.Instance->DR; // Clears EOC flag
 	}
-	else if(__HAL_ADC_GET_FLAG(&hadc2,ADC_SR_EOC)) // ADC 2 Value
+	if(hadc2.Instance->SR & ADC_SR_EOC) // ADC 2 Value
 	{
-		adc2_val = HAL_ADC_GetValue(&hadc2);
+		adc2_val = hadc2.Instance->DR;
 	}
+//	printf("0x%02X 0x%02X\r\n\r\n", hadc1.Instance->SR, hadc2.Instance->SR);
 }
 
 
@@ -216,6 +218,10 @@ int main(void)
 	ADC_Init(ADC1, &hadc1);
 	ADC_Init(ADC3, &hadc2);
 
+	TIM_HandleTypeDef sample_time;
+	SamplingTimerInit(&sample_time);
+	HAL_TIM_Base_Start(&sample_time);
+
 	DAC_HandleTypeDef hdac;
 	DAC1_Init(&hdac);
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
@@ -236,7 +242,8 @@ int main(void)
 		// Wait for both values
 		while( (adc1_val & ADC_VAL_WAITING) || (adc2_val & ADC_VAL_WAITING) );
 
-		float Xt = (adc1_val-DC_OFFSET) * (adc2_val-DC_OFFSET);
+		// Divide by offset (max amplitude) as multiply has max amplitude of DC_OFFSET^2
+		float Xt = ((int32_t)(adc1_val-DC_OFFSET) * (int32_t)(adc2_val-DC_OFFSET)) / ((float)(DC_OFFSET));
 
 		float Yt =
 				0.001f*Xt - 0.002f*X(t-2) + 0.001f*X(t-4)
@@ -245,17 +252,18 @@ int main(void)
 		int32_t out = ((int32_t)Yt)+DC_OFFSET;
 		// Saturation
 		if(out < 0) out = 0;
-		if(out > 255) out = 255;
+		if(out > ((1<<12)-1)) out = (1<<12)-1;
 
-		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_8B_R, out);
-
+		hdac.Instance->DHR12R1 = out;
 		adc1_val = adc2_val = ADC_VAL_WAITING; // Set waiting flags (wait to do this so DAC is set ASAP)
 		// Must do after eval since this overwrites X(t-4) which is actually the same spot in circ buff
 		Y(t) = Yt;
 		X(t) = Xt;
 		++t;
 
-		printf("X: %lX\tY: %lX\r\n",(double)Xt,(double)Yt);
+//		__disable_irq();
+//		printf("A1: %lu\t A2: %lu\tX: %f\tY: %f\r\n",adc1_val,adc2_val,(double)Xt,(double)Yt);
+//		__enable_irq();
 	}
 
 #endif

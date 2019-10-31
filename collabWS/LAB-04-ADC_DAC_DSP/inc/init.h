@@ -11,5 +11,6 @@ void CPU_CACHE_Enable(void);
 void Sys_Init(void);
 void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle);
 void DAC1_Init(DAC_HandleTypeDef* hdac);
+void SamplingTimerInit(TIM_HandleTypeDef* handle);
 
 #endif
