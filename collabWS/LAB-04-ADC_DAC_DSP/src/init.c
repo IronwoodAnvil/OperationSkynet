@@ -100,20 +100,34 @@ void SysTick_Handler(void) {
 
 #include "task.h"
 
+void SamplingTimerInit(TIM_HandleTypeDef* handle)
+{
+	__HAL_RCC_TIM6_CLK_ENABLE();
+
+	handle->Instance = TIM6;
+	handle->Init.Prescaler = 0;
+	handle->Init.Period = 108-1; // Sample at 1 MHz
+
+	HAL_TIM_Base_Init(handle);
+
+	// Set it in update event mode
+	TIM6->CR1 &= ~TIM_CR1_UDIS;
+	TIM6->CR2 |= TIM_CR2_MMS_1;
+}
+
+
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
 
 	if(hadc->Instance == ADC1)
 	{
-		// Arduino A0, PA6, ADC1_IN6
 		__HAL_RCC_ADC1_CLK_ENABLE();
 		__HAL_RCC_GPIOA_CLK_ENABLE();
 
+		// Arduino A0, PA6, ADC1_IN6
 		GPIO_InitTypeDef pin_init;
 		pin_init.Pin = GPIO_PIN_6;
 		pin_init.Mode = GPIO_MODE_ANALOG;
-
-		HAL_NVIC_EnableIRQ(ADC_IRQn);
 
 		HAL_GPIO_Init(GPIOA, &pin_init);
 	}
@@ -141,21 +155,23 @@ void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 	handle->Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4; // 27 MHz < 36 MHz
 	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	handle->Init.ScanConvMode = ADC_SCAN_DISABLE;
-#if LAB_TASK != 5
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
-#else
-	handle->Init.Resolution = ADC_RESOLUTION_8B; // Lowest resolution = MAX SPEED
-#endif
-#if LAB_TASK != 1
+#if LAB_TASK == 4
 	handle->Init.ContinuousConvMode = ENABLE;
+#elif LAB_TASK == 5
+	handle->Init.ExternalTrigConv = ADC_EXTERNALTRIG0_T6_TRGO; // Trigger on Timer 6
+	handle->Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
 #endif
 
 	HAL_ADC_Init(handle);
 
 	ADC_ChannelConfTypeDef channel;
+
 	if(instance == ADC1) channel.Channel = ADC_CHANNEL_6;
 	else if(instance == ADC3) channel.Channel = ADC_CHANNEL_8;
+
 	channel.Rank = 1;
+
 #if LAB_TASK == 1
 	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES;
 #else
