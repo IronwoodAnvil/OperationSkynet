@@ -106,11 +106,11 @@ void SamplingTimerInit(TIM_HandleTypeDef* handle)
 
 	handle->Instance = TIM6;
 	handle->Init.Prescaler = 0;
-	handle->Init.Period = 108-1; // Sample at 1 MHz
+	handle->Init.Period = 108-1; // Sample at 108 MHz/108 = 1 MHz
 
 	HAL_TIM_Base_Init(handle);
 
-	// Set it in update event mode
+	// Set it in update event trigger mode
 	TIM6->CR1 &= ~TIM_CR1_UDIS;
 	TIM6->CR2 |= TIM_CR2_MMS_1;
 }
@@ -152,12 +152,12 @@ void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 {
 	memset(handle, 0, sizeof(ADC_HandleTypeDef));
 	handle->Instance = instance;
-	handle->Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4; // 27 MHz < 36 MHz
-	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	handle->Init.ScanConvMode = ADC_SCAN_DISABLE;
+	handle->Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4; // 216 MHz/4/4 = 27 MHz < 36 MHz
+	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT; // 12 bit, right aligned
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
+	handle->Init.ScanConvMode = ADC_SCAN_DISABLE; // Only reading one channel
 #if LAB_TASK == 4
-	handle->Init.ContinuousConvMode = ENABLE;
+	handle->Init.ContinuousConvMode = ENABLE; // Continuous mode to get max and consistent rate
 #elif LAB_TASK == 5
 	handle->Init.ExternalTrigConv = ADC_EXTERNALTRIG0_T6_TRGO; // Trigger on Timer 6
 	handle->Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
@@ -173,7 +173,7 @@ void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 	channel.Rank = 1;
 
 #if LAB_TASK == 1
-	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES; // No need to be fast, this gives more time for sample cap to voltage to converge
 #else
 	channel.SamplingTime = ADC_SAMPLETIME_3CYCLES; // Maximum Speed!!! (We should have a strong signal from generator so okay)
 #endif
@@ -190,7 +190,7 @@ void DAC1_Init(DAC_HandleTypeDef* hdac)
 	HAL_DAC_Init(hdac);
 
 	DAC_ChannelConfTypeDef sConfig;
-	sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+	sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE; // Output immediately on register update
 	sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
 
 	HAL_DAC_ConfigChannel(hdac, &sConfig, DAC_CHANNEL_1);

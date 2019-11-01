@@ -89,7 +89,7 @@ int main(void)
 		if(conv_v < min_v) min_v = conv_v;
 
 		//Double casts are to suppress warnings
-		printf("Raw: %u\tVolts: %f\tHigh: %f\t Low: %f\tAvg: %f\r\n",conv,(double)conv_v,(double)max_v,(double)min_v,(double)ADC_TO_VOLTS(sum16>>4));
+		printf("Raw: %4u  Volts: %f  High: %f  Low: %f  Avg: %f\r\n",conv,(double)conv_v,(double)max_v,(double)min_v,(double)ADC_TO_VOLTS(sum16>>4));
 
 		while(HAL_GetTick() < tickstart+20); // Wait for any remaining debounce for press
 		while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)); // Wait for release
