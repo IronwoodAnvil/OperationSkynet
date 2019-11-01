@@ -57,34 +57,34 @@ int main(void)
 
 	__HAL_RCC_GPIOA_CLK_ENABLE(); // This was actually done in the ADC MSP Init, but it isn't clear, so we do it again
 	GPIO_InitTypeDef btn_conf;
-	btn_conf.Pin = GPIO_PIN_0;
+	btn_conf.Pin = GPIO_PIN_0; // set read pin for adc
 	btn_conf.Mode = GPIO_MODE_INPUT;
 	btn_conf.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(GPIOA, &btn_conf);
 
-	uint16_t history[16] = {0};
+	uint16_t history[16] = {0}; //array where previous reads are stored
 	uint32_t h_id = 0;
 	uint32_t sum16 = 0;
 
-	float max_v = -1;
-	float min_v = 5;
+	float max_v = -1; //keeps max
+	float min_v = 5; // keeps min
 
 
 	while(1)
 	{
-		while(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0));
+		while(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)); //read PA0 value when button not pressed
 		uint32_t tickstart = HAL_GetTick();
 
 		HAL_ADC_Start(&hadc);
-		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
-		uint16_t conv = HAL_ADC_GetValue(&hadc);
+		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC)); //wait until conversion done
+		uint16_t conv = HAL_ADC_GetValue(&hadc); //get conversion
 
-		sum16 -= history[h_id];
+		sum16 -= history[h_id]; // history manipulation
 		sum16 += conv;
 		history[h_id] = conv;
 		h_id = (h_id+1)%16;
 
-		float conv_v = ADC_TO_VOLTS(conv);
+		float conv_v = ADC_TO_VOLTS(conv); //use conversion factor for adc val tovolts
 		if(conv_v > max_v) max_v = conv_v;
 		if(conv_v < min_v) min_v = conv_v;
 
@@ -97,33 +97,33 @@ int main(void)
 	}
 
 #elif LAB_TASK == 2
-	DAC_HandleTypeDef hdac;
+	DAC_HandleTypeDef hdac; //inits
 	DAC1_Init(&hdac);
 
 	ADC_HandleTypeDef hadc;
 	ADC_Init(ADC1, &hadc);
 	HAL_ADC_Start(&hadc);
 
-	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1); //dac1
 
 	uint32_t count = 0;
 	while(1){
 #if SUB_TASK == 2
-		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
-		uint16_t conv = HAL_ADC_GetValue(&hadc);
+		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC)); //wait for adc conversion
+		uint16_t conv = HAL_ADC_GetValue(&hadc); //get val
 #elif SUB_TASK == 1
-		uint16_t conv = count;
+		uint16_t conv = count; //makes sawtooth
 		++count;
 		if(count > 4095) count = 0;
 #endif
-		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, conv);
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, conv); // set dac1 to conv
 	}
 
 #elif LAB_TASK == 3
 
 #if SUB_TASK == 1
 
-	asm("mov r6, #2718		\r\n"
+	asm("mov r6, #2718		\r\n" //objective 1
 		"mov r7, #31415	\r\n"
 		"add r6, r6, r7");
 	int32_t result;
@@ -131,13 +131,13 @@ int main(void)
 			: "=m" (result));
 	printf("%d+%d = %ld\r\n",2718,31415,result);
 
-	int16_t v1 = 2718;
+	int16_t v1 = 2718; //objective 2
 	int16_t v2 = 31415;
 	asm("smulbb %0, %1, %2"
 			: "=r" (result) : "r" (v1), "r" (v2));
 	printf("%d*%d = %ld\r\n",v1,v2,result);
 
-	int32_t x = 42;
+	int32_t x = 42; // objective 3
 	asm("mov %[r], %[x]		\r\n" // x
 		"mul %[r], %[n2]	\r\n" // Multiply by 2
 		"sdiv %[r], %[n3]	\r\n" // Divide by 3
@@ -146,6 +146,7 @@ int main(void)
 			: [x] "r" (x), [n3] "r" (3), [n2] "r" (2));
 	printf("[MUL] %lu*2/3 + 5 = %lu\r\n", x, result);
 
+	//objective 4
 	result = 0; // Prove that actual result is regenerated
 	asm("mov %[r], #15					\r\n"
 		"mla %[r], %[x], %[n2], %[r]	\r\n" // 2*x + 15
@@ -159,7 +160,7 @@ int main(void)
 	while(1);
 
 #elif SUB_TASK == 2
-	int32_t result1;
+	int32_t result1; //objective 1
 	asm("mov r6, #8675		\r\n"
 		"mov r7, #309	\r\n"
 		"add r6, r6, r7");
@@ -167,13 +168,14 @@ int main(void)
 			: "=m" (result1));
 	printf("%d+%d = %ld\r\n",8675,309,result1);
 
-	float result;
+	float result; //objective 2
 	float v1 = 8675.309;
 	float v2 = 525.600;
 	asm("VMUL.F32 %0, %1, %2"
 			: "=t" (result) : "t" (v1), "t" (v2));
 	printf("%f*%f = %f\r\n",v1,v2,result);
 
+	//objective 3
 	//evaluate the equation 2x/3 + 5 through floating point addition (VADD), multiplication (VMUL), and division (VDIV)
 	float x = 3;
 	asm("vmov %[w], %[x]		\r\n" // x
@@ -185,7 +187,7 @@ int main(void)
 	printf("[MUL] %f*2/3 + 5 = %f\r\n", x, result);
 
 	result = 0; // Prove that actual result is regenerated
-
+		//objective 4
 		asm("vmov %[w], %[n4]		\r\n" // 15
 			"vmla.f32 %[w], %[x], %[n2] \r\n" //x * 2 added to 15
 			"vdiv.f32 %[w], %[w], %[n3]	\r\n" // Divide by 3
@@ -199,7 +201,7 @@ int main(void)
 
 #elif LAB_TASK == 4
 
-	ADC_HandleTypeDef hadc;
+	ADC_HandleTypeDef hadc; //inits
 	ADC_Init(ADC1, &hadc);
     HAL_ADC_Start(&hadc);
 
@@ -209,7 +211,7 @@ int main(void)
 
 #if SUB_TASK == 1
 
-	uint16_t filter = 0;
+	uint16_t filter = 0; //history for equation h , h-1, h-2 ...
 	uint16_t history[4] = {0};
 	uint32_t t = 0;
 
@@ -218,17 +220,17 @@ int main(void)
 	while(1)
 	{
 
-		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC));
+		while(!__HAL_ADC_GET_FLAG(&hadc,ADC_SR_EOC)); //wait for conversion
 		X(t) = HAL_ADC_GetValue(&hadc);
-		filter = 0.312500f*X(t) + 0.240385f*X(t-1) + 0.312500f*X(t-2) + 0.296875f*filter;
+		filter = 0.312500f*X(t) + 0.240385f*X(t-1) + 0.312500f*X(t-2) + 0.296875f*filter; //our filter
 		if(filter >= 1<<12) filter = (1<<12) - 1; // Saturate to 12 bits
-		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, filter);
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, filter); //set dac
 		++t;
 	}
 
 #elif SUB_TASK == 2
 
-	iir_asm_filt(hadc.Instance, hdac.Instance);
+	iir_asm_filt(hadc.Instance, hdac.Instance); //assembly implementaion
 
 #endif
 
