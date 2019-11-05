@@ -182,3 +182,72 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
         //HAL_GPIO_WritePin(SPI_CS_PORT, SPI_CS_PIN, GPIO_PIN_SET);
 	}
 }
+
+
+void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
+{
+	if(hadc->Instance == ADC1)
+	{
+		__HAL_RCC_ADC1_CLK_ENABLE();
+		__HAL_RCC_GPIOA_CLK_ENABLE();
+
+		// Arduino A0, PA6, ADC1_IN6
+		GPIO_InitTypeDef pin_init;
+		pin_init.Pin = GPIO_PIN_6;
+		pin_init.Mode = GPIO_MODE_ANALOG;
+
+		HAL_GPIO_Init(GPIOA, &pin_init);
+	}
+}
+
+void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
+{
+	handle->Instance = instance;
+	handle->Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4; // 216 MHz/4/4 = 27 MHz < 36 MHz
+	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT; // 12 bit, right aligned
+	handle->Init.Resolution = ADC_RESOLUTION_12B;
+	handle->Init.ScanConvMode = ADC_SCAN_DISABLE; // Only reading one
+	handle->Init.ContinuousConvMode = ENABLE; // Continuous mode to get max and consistent rate
+
+	HAL_ADC_Init(handle);
+
+	ADC_ChannelConfTypeDef channel;
+
+	channel.Channel = ADC_CHANNEL_6;
+	channel.Rank = 1;
+	channel.SamplingTime = ADC_SAMPLETIME_3CYCLES; // Maximum Speed!!! (We should have a strong signal from generator so okay)
+	HAL_ADC_ConfigChannel(handle, &channel);
+}
+
+
+
+void DAC1_Init(DAC_HandleTypeDef* hdac)
+{
+	hdac->Instance = DAC1;
+	HAL_DAC_Init(hdac);
+
+	DAC_ChannelConfTypeDef sConfig;
+	sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE; // Output immediately on register update
+	sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+
+	HAL_DAC_ConfigChannel(hdac, &sConfig, DAC_CHANNEL_1);
+
+}
+
+void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
+{
+	if(hdac->Instance == DAC1)
+	{
+		// Arduino A1, PA4, DAC_OUT_1
+		__HAL_RCC_DAC_CLK_ENABLE();
+		__HAL_RCC_GPIOA_CLK_ENABLE();
+
+		GPIO_InitTypeDef pin_init;
+		pin_init.Pin = GPIO_PIN_4;
+		pin_init.Mode = GPIO_MODE_ANALOG;
+		pin_init.Pull = GPIO_NOPULL;
+
+		HAL_GPIO_Init(GPIOA, &pin_init);
+	}
+}
+

@@ -1,8 +1,9 @@
 
 #include <ansi_util.h>
 #include <init.h>
+#include <stdbool.h>
 
-#define LAB_TASK 2
+#define LAB_TASK 3
 
 
 #define ESCAPE_CHARACTER '\x1B'
@@ -25,6 +26,34 @@ void DMA1_Stream3_IRQHandler()
 {
 	HAL_DMA_IRQHandler(&hspidma_rx);
 }
+
+#elif LAB_TASK == 3
+
+#define ADC_DMA_BATCH_SIZE 16
+
+DMA_HandleTypeDef hdma;
+ADC_HandleTypeDef hadc;
+DAC_HandleTypeDef hdac;
+
+uint32_t values[2+ADC_DMA_BATCH_SIZE] = {0};
+volatile bool data_ready = false;
+
+void DMA2_Stream0_IRQHandler()
+{
+	HAL_DMA_IRQHandler(&hdma);
+}
+void ADC_IRQHandler()
+{
+	HAL_ADC_IRQHandler(&hadc);
+}
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc_local)
+{
+	if(hadc_local == &hadc)
+	{
+		data_ready = true;
+	}
+}
+
 
 #endif
 
@@ -95,5 +124,50 @@ int main()
 		fflush(stdout);
 	}
 
+#elif LAB_TASK == 3
+
+	//inits
+	__HAL_RCC_DMA2_CLK_ENABLE();
+
+	hdma.Instance = DMA2_Stream0;
+	hdma.Init.Channel = DMA_CHANNEL_0;
+	hdma.Init.Mode = DMA_CIRCULAR;
+	hdma.Init.Direction = DMA_PERIPH_TO_MEMORY;
+	hdma.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	hdma.Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma.Init.MemInc = DMA_MINC_ENABLE;
+	hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+	hdma.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+	__HAL_LINKDMA(&hadc,DMA_Handle,hdma);
+	HAL_DMA_Init(&hdma);
+
+	ADC_Init(ADC1, &hadc);
+	HAL_NVIC_EnableIRQ(ADC_IRQn);
+	HAL_ADC_Start_DMA(&hadc,values+2,ADC_DMA_BATCH_SIZE);
+
+	DAC1_Init(&hdac);
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+
+	uint16_t filter = 0; //history for equation h , h-1, h-2 ...
+
+	while(1)
+	{
+		data_ready = false;
+		// Actually get data w/ DMA, values + 2 to keep history in a reasonable place
+
+		while(!data_ready); //wait for conversion batch
+
+		// Filter the block
+		for(uint32_t t = 2; t < ADC_DMA_BATCH_SIZE; ++t)
+		{
+			filter = 0.312500f*values[t] + 0.240385f*values[t-1] + 0.312500f*values[t-2] + 0.296875f*filter;
+			if(filter >= 1<<12) filter = (1<<12) - 1; // Saturate to 12 bits
+			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, filter); //set dac
+		}
+		// Store history values between batches
+		values[0] = values[ADC_DMA_BATCH_SIZE];
+		values[1] = values[ADC_DMA_BATCH_SIZE+1];
+	}
 #endif
 }

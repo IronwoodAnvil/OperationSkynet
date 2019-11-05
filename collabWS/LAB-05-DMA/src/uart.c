@@ -61,7 +61,6 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 
 		__HAL_RCC_DMA2_CLK_ENABLE();
 
-
 		// Common Configuration
 		hdma_tx.Init.Mode = DMA_NORMAL;
 		hdma_tx.Init.Channel = DMA_CHANNEL_4;

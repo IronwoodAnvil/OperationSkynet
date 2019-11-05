@@ -10,5 +10,7 @@ void SystemClock_Config(void);
 void CPU_CACHE_Enable(void);
 void Sys_Init(void);
 void SPI_Init(SPI_HandleTypeDef* handle, DMA_HandleTypeDef* hdma_rx, DMA_HandleTypeDef* hdma_tx);
+void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle);
+void DAC1_Init(DAC_HandleTypeDef* hdac);
 
 #endif
