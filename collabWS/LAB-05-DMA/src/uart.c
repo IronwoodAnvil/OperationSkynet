@@ -6,7 +6,6 @@ DMA_HandleTypeDef hdma_tx;
 DMA_HandleTypeDef hdma_rx;
 
 char* volatile tx_buffer = NULL;
-volatile bool rx_in_progress = false;
 
 void DMA2_Stream2_IRQHandler()
 {
@@ -29,12 +28,6 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		tx_buffer = NULL;
 	}
 }
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	rx_in_progress = false;
-}
-
 
 // Initialize Hardware Resources
 // Peripheral's clock enable
@@ -82,20 +75,15 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 
 		hdma_tx.Instance = DMA2_Stream7;
 		hdma_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
-		hdma_tx.StreamIndex = 7;
-
+		HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 		__HAL_LINKDMA(huart,hdmatx,hdma_tx);
 		HAL_DMA_Init(&hdma_tx);
 
 		hdma_rx.Instance = DMA2_Stream2;
 		hdma_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
-		hdma_rx.StreamIndex = 2;
-
+		HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 		__HAL_LINKDMA(huart,hdmarx,hdma_rx);
 		HAL_DMA_Init(&hdma_rx);
-
-		HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
-		HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 
 	} else if (huart->Instance == USART6) {
 		// Enable GPIO Clocks
@@ -151,7 +139,7 @@ HAL_UART_Receive(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size, uint3
 
 // Make printf(), putchar(), etc. default to work over USB UART
 int _write(int file, char *ptr, int len) {
-	while(tx_buffer != NULL); // Non null buffer is in use as it is cleared to null in tx complete
+	while(tx_buffer != NULL); // Non null buffer is in use as it is freed and cleared to null in tx complete
 	tx_buffer = malloc(len); // Create persistant buffer
 	memcpy(tx_buffer,ptr,len); // Copy to persistent buffer
 	HAL_UART_Transmit_DMA(&USB_UART, (uint8_t*) tx_buffer, len);
@@ -162,9 +150,9 @@ int _write(int file, char *ptr, int len) {
 int _read(int file, char *ptr, int len) {
 	*ptr = 0x00; // Clear the character buffer because scanf() is finicky
 	len = 1; // Again because of scanf's finickiness, len must = 1
-	rx_in_progress = true;
 	HAL_UART_Receive_DMA(&USB_UART, (uint8_t*) ptr, len);
-	while(rx_in_progress);
+	// Have to poll UART RX status since that appears to come back slightly later than the DMA complete
+	while(USB_UART.RxState != HAL_UART_STATE_READY);
 	return len;
 }
 
