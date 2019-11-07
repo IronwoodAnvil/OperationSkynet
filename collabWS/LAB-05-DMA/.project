@@ -40,7 +40,7 @@
 	<variableList>
 		<variable>
 			<name>SKYNET_LOC</name>
-			<value>file:/C:/Users/lovep/Documents/School/19F/MPS/GitRoot/collabWS/SkynetModules</value>
+			<value>$%7BWORKSPACE_LOC%7D/SkynetModules</value>
 		</variable>
 		<variable>
 			<name>STM32LIB_LOC</name>

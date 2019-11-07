@@ -150,6 +150,7 @@ int main()
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
 	uint16_t filter = 0; //history for equation h , h-1, h-2 ...
+	volatile uint32_t  batch_count = 0;
 
 	while(1)
 	{
@@ -157,6 +158,7 @@ int main()
 		// Actually get data w/ DMA, values + 2 to keep history in a reasonable place
 
 		while(!data_ready); //wait for conversion batch
+
 
 		// Filter the block
 		for(uint32_t t = 2; t < ADC_DMA_BATCH_SIZE; ++t)
@@ -168,6 +170,9 @@ int main()
 		// Store history values between batches
 		values[0] = values[ADC_DMA_BATCH_SIZE];
 		values[1] = values[ADC_DMA_BATCH_SIZE+1];
+		++batch_count;
+
+		HAL_ADC_Start_DMA(&hadc,values+2,ADC_DMA_BATCH_SIZE);
 	}
 #endif
 }
