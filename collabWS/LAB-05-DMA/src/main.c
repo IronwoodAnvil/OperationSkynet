@@ -3,7 +3,7 @@
 #include <init.h>
 #include <stdbool.h>
 
-#define LAB_TASK 3
+#include <task.h>
 
 
 #define ESCAPE_CHARACTER '\x1B'
@@ -27,20 +27,19 @@ void DMA1_Stream3_IRQHandler()
 	HAL_DMA_IRQHandler(&hspidma_rx);
 }
 
-#elif LAB_TASK == 3
+#elif LAB_TASK == 3 || LAB_TASK == 4
 
+// Common ADC config and interrupts
 #define ADC_DMA_BATCH_SIZE 16
 
-DMA_HandleTypeDef hdma;
+DMA_HandleTypeDef hdmaadc;
 ADC_HandleTypeDef hadc;
 DAC_HandleTypeDef hdac;
-
-uint32_t values[2+ADC_DMA_BATCH_SIZE] = {0};
 volatile bool data_ready = false;
 
 void DMA2_Stream0_IRQHandler()
 {
-	HAL_DMA_IRQHandler(&hdma);
+	HAL_DMA_IRQHandler(&hdmaadc);
 }
 void ADC_IRQHandler()
 {
@@ -54,8 +53,29 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc_local)
 	}
 }
 
+#if LAB_TASK == 3
+
+uint32_t values[2+ADC_DMA_BATCH_SIZE] = {0};
+
+#elif LAB_TASK == 4
+
+DMA_HandleTypeDef hdmadac;
+// Allocate buffer memory
+uint32_t __buf[4*ADC_DMA_BATCH_SIZE];
+// Calculate base pointers for sub-buffers
+uint32_t* const buf_adc_1 = __buf;
+uint32_t* const buf_adc_2 = __buf+ADC_DMA_BATCH_SIZE;
+uint32_t* const buf_dac_1 = __buf+2*ADC_DMA_BATCH_SIZE;
+uint32_t* const buf_dac_2 = __buf+3*ADC_DMA_BATCH_SIZE;
+
+void DMA1_Stream5_IRQHandler()
+{
+	HAL_DMA_IRQHandler(&hdmadac);
+}
 
 #endif
+#endif
+
 
 int main()
 {
@@ -124,34 +144,31 @@ int main()
 		fflush(stdout);
 	}
 
-#elif LAB_TASK == 3
+#elif LAB_TASK == 3 || LAB_TASK == 4
 
-	//inits
-	__HAL_RCC_DMA2_CLK_ENABLE();
+	//inits (mostly common
+	ADC_DMA_Init(&hdmaadc);
+	__HAL_LINKDMA(&hadc,DMA_Handle,hdmaadc);
 
-	hdma.Instance = DMA2_Stream0;
-	hdma.Init.Channel = DMA_CHANNEL_0;
-	hdma.Init.Mode = DMA_CIRCULAR;
-	hdma.Init.Direction = DMA_PERIPH_TO_MEMORY;
-	hdma.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-	hdma.Init.PeriphInc = DMA_PINC_DISABLE;
-	hdma.Init.MemInc = DMA_MINC_ENABLE;
-	hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-	hdma.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
-	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-	__HAL_LINKDMA(&hadc,DMA_Handle,hdma);
-	HAL_DMA_Init(&hdma);
+#if LAB_TASK == 4
+	DAC_DMA_Init(&hdmadac);
+	__HAL_LINKDMA(&hdac,DMA_Handle1,hdmadac);
+
+	TIM_HandleTypeDef sampleTimer;
+	SamplingTimerInit(&sampleTimer);
+#endif
 
 	ADC_Init(ADC1, &hadc);
 	HAL_NVIC_EnableIRQ(ADC_IRQn);
-	HAL_ADC_Start_DMA(&hadc,values+2,ADC_DMA_BATCH_SIZE);
 
 	DAC1_Init(&hdac);
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
-	uint16_t filter = 0; //history for equation h , h-1, h-2 ...
-	volatile uint32_t  batch_count = 0;
+#if LAB_TASK == 3
 
+	uint16_t filter = 0; //history for equation h , h-1, h-2 ...
+
+	HAL_ADC_Start_DMA(&hadc,values+2,ADC_DMA_BATCH_SIZE);
 	while(1)
 	{
 		data_ready = false;
@@ -170,9 +187,21 @@ int main()
 		// Store history values between batches
 		values[0] = values[ADC_DMA_BATCH_SIZE];
 		values[1] = values[ADC_DMA_BATCH_SIZE+1];
-		++batch_count;
-
-		HAL_ADC_Start_DMA(&hadc,values+2,ADC_DMA_BATCH_SIZE);
 	}
+#elif LAB_TASK == 4
+
+	// Enable and Start waiting for trigger events
+	HAL_ADC_Start(&hadc);
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+
+	// The casts to uint32_t are intentional because the function takes integer addresses instead of pointers (IDK why)
+	HAL_DMAEx_MultiBufferStart(&hdmaadc, (uint32_t)ADC1->DR, (uint32_t)buf_adc_1, (uint32_t)buf_adc_2, ADC_DMA_BATCH_SIZE);
+	HAL_DMAEx_MultiBufferStart(&hdmadac, (uint32_t)ADC1->DR, (uint32_t)buf_dac_1, (uint32_t)buf_dac_2, ADC_DMA_BATCH_SIZE);
+
+	HAL_TIM_Base_Start(&sampleTimer); // Actually start everything by providing update events
+
+
+
+#endif
 #endif
 }

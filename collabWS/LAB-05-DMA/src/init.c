@@ -1,5 +1,7 @@
 #include "init.h"
 
+#include <task.h>
+
 /**
   * @brief  System Clock Configuration
   *         The system Clock is configured as follow :
@@ -183,6 +185,54 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 	}
 }
 
+void SamplingTimerInit(TIM_HandleTypeDef* handle)
+{
+	__HAL_RCC_TIM6_CLK_ENABLE();
+
+	handle->Instance = TIM6;
+	handle->Init.Prescaler = 0;
+	handle->Init.Period = 108-1; // Sample at 108 MHz/108 = 1 MHz
+
+	HAL_TIM_Base_Init(handle);
+
+	// Set it in update event trigger mode
+	TIM6->CR1 &= ~TIM_CR1_UDIS;
+	TIM6->CR2 |= TIM_CR2_MMS_1;
+}
+
+void ADC_DMA_Init(DMA_HandleTypeDef* hdma)
+{
+	__HAL_RCC_DMA2_CLK_ENABLE();
+
+	hdma->Instance = DMA2_Stream0;
+	hdma->Init.Channel = DMA_CHANNEL_0;
+	hdma->Init.Mode = DMA_CIRCULAR;
+	hdma->Init.Direction = DMA_PERIPH_TO_MEMORY;
+	hdma->Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	hdma->Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma->Init.MemInc = DMA_MINC_ENABLE;
+	hdma->Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+	hdma->Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+	HAL_DMA_Init(hdma);
+}
+
+void DAC_DMA_Init(DMA_HandleTypeDef* hdma)
+{
+	__HAL_RCC_DMA1_CLK_ENABLE();
+
+	hdma->Instance = DMA1_Stream5;
+	hdma->Init.Channel = DMA_CHANNEL_7;
+	hdma->Init.Mode = DMA_CIRCULAR;
+	hdma->Init.Direction = DMA_MEMORY_TO_PERIPH;
+	hdma->Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	hdma->Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma->Init.MemInc = DMA_MINC_ENABLE;
+	hdma->Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+	hdma->Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+	HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+	HAL_DMA_Init(hdma);
+}
 
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
@@ -208,6 +258,7 @@ void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
 	handle->Init.ScanConvMode = ADC_SCAN_DISABLE; // Only reading one
 	handle->Init.ContinuousConvMode = ENABLE; // Continuous mode to get max and consistent rate
+	handle->Init.DMAContinuousRequests = ENABLE;
 
 	HAL_ADC_Init(handle);
 
