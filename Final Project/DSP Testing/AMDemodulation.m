@@ -36,17 +36,17 @@ plot(t2(1:baud),P(1:baud));
 hold off;
 
 % Generate sync reference signals with correct oversampling
-synca = repmat(repmat([1 1 0 0],1,7),oversample,1);
+synca = repmat(repmat([1 1 -1 -1],1,7),oversample,1);
 synca = synca(:)';
-syncb = repmat(repmat([1 1 1 0 0],1,7),oversample,1);
+syncb = repmat(repmat([1 1 1 -1.5 -1.5],1,7),oversample,1);
 syncb = syncb(:)';
 
 % Find first sync instances
 shiftrange = 2400*oversample;
-finda = xcov(P,synca,shiftrange);
+finda = xcorr(P,synca,shiftrange);
 finda = finda(shiftrange:end);
 [~,shifta] = max(finda)
-findb = xcov(P,syncb,shiftrange);
+findb = xcorr(P,syncb,shiftrange);
 findb = findb(shiftrange:end);
 [~,shiftb] = max(findb)
 
