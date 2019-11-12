@@ -18,12 +18,12 @@ t = (0:length(Y))/Fs;
 
 % Compute baud-synchronized samples
 oversample = 8;
-baud = 4160*oversample;
-nsamples = floor(length(Y)*baud/Fs);
+baud_sync_rate = 4160*oversample;
+nsamples = floor(length(Y)*baud_sync_rate/Fs);
 % Take most recent sample at each timer tick (oversample*4160)
-indicies = floor((1:nsamples)*Fs/baud);
+indicies = floor((1:nsamples)*Fs/baud_sync_rate);
 P = Y(indicies);
-t2 = (0:length(P))/baud;
+t2 = (0:length(P))/baud_sync_rate;
 
 % Plot recovered signals
 figure(1);
@@ -32,7 +32,7 @@ shift = ceil(D(1));
 plot(t(1:Fs),Y(shift+1:Fs+shift));
 hold on;
 plot(t(1:Fs),Y2(1:Fs));
-plot(t2(1:baud),P(1:baud));
+plot(t2(1:baud_sync_rate),P(1:baud_sync_rate));
 hold off;
 
 % Generate sync reference signals with correct oversampling
@@ -45,10 +45,10 @@ syncb = syncb(:)';
 shiftrange = 2400*oversample;
 finda = xcorr(P,synca,shiftrange);
 finda = finda(shiftrange:end);
-[~,shifta] = max(finda)
+[~,shifta] = max(finda);
 findb = xcorr(P,syncb,shiftrange);
 findb = findb(shiftrange:end);
-[~,shiftb] = max(findb)
+[~,shiftb] = max(findb);
 
 % plot cross correlation
 figure(2);
@@ -66,9 +66,10 @@ stem(P(shiftb-50:shiftb+50))
 lines = floor((length(P)-shiftb)/oversample/2080);
 
 image_index_set = reshape(shiftb + (0:oversample:oversample*lines*2080-1),2080,[],1) + reshape([3 4 5 6],[1,1,4]);
-image_raw = reshape(sum(P(image_index_set),3),2080,[])';
-imax = max(image_raw(:));
-imin = min(image_raw(:));
-image_raw = (image_raw-imin)/(imax-imin);
+img = reshape(sum(P(image_index_set),3),2080,[])';
+imax = max(img(:));
+imin = min(img(:));
+img = (img-imin)/(imax-imin);
 figure(5);
-imshow(image_raw);
+imshow(img);
+imwrite(img,'NOAAAPT_Sound_Image.png');
