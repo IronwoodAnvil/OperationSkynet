@@ -62,3 +62,13 @@ figure(3);
 stem(P(shifta-50:shifta+50))
 figure(4);
 stem(P(shiftb-50:shiftb+50))
+
+lines = floor((length(P)-shiftb)/oversample/2080);
+
+image_index_set = reshape(shiftb + (0:oversample:oversample*lines*2080-1),2080,[],1) + reshape([3 4 5 6],[1,1,4]);
+image_raw = reshape(sum(P(image_index_set),3),2080,[])';
+imax = max(image_raw(:));
+imin = min(image_raw(:));
+image_raw = (image_raw-imin)/(imax-imin);
+figure(5);
+imshow(image_raw);
