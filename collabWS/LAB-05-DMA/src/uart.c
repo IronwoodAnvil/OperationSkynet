@@ -7,11 +7,11 @@ DMA_HandleTypeDef hdma_rx;
 
 char* volatile tx_buffer = NULL;
 
-void DMA2_Stream2_IRQHandler()
+void DMA2_Stream2_IRQHandler() // RX DMA
 {
 	HAL_DMA_IRQHandler(&hdma_rx);
 }
-void DMA2_Stream7_IRQHandler()
+void DMA2_Stream7_IRQHandler() // TX DMA
 {
 	HAL_DMA_IRQHandler(&hdma_tx);
 }

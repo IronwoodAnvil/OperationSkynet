@@ -190,7 +190,7 @@ void SamplingTimerInit(TIM_HandleTypeDef* handle)
 	__HAL_RCC_TIM6_CLK_ENABLE();
 
 	handle->Instance = TIM6;
-	handle->Init.Prescaler = 0;
+	handle->Init.Prescaler = 1-1;
 	handle->Init.Period = 108-1; // Sample at 108 MHz/108 = 1 MHz
 
 	HAL_TIM_Base_Init(handle);
@@ -257,8 +257,13 @@ void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT; // 12 bit, right aligned
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
 	handle->Init.ScanConvMode = ADC_SCAN_DISABLE; // Only reading one
-	handle->Init.ContinuousConvMode = ENABLE; // Continuous mode to get max and consistent rate
 	handle->Init.DMAContinuousRequests = ENABLE;
+#if LAB_TASK != 4
+	handle->Init.ContinuousConvMode = ENABLE; // Continuous mode to get max and consistent rate
+#else
+	handle->Init.ExternalTrigConv = ADC_EXTERNALTRIG0_T6_TRGO;
+	handle->Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+#endif
 
 	HAL_ADC_Init(handle);
 
@@ -268,6 +273,10 @@ void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 	channel.Rank = 1;
 	channel.SamplingTime = ADC_SAMPLETIME_3CYCLES; // Maximum Speed!!! (We should have a strong signal from generator so okay)
 	HAL_ADC_ConfigChannel(handle, &channel);
+
+#if LAB_TASK == 4
+	handle->Instance->CR2 |= ADC_CR2_DMA; // Enable DMA request gen (but do not start DMA, needs to be done by DMAEx)
+#endif
 }
 
 
@@ -279,9 +288,17 @@ void DAC1_Init(DAC_HandleTypeDef* hdac)
 
 	DAC_ChannelConfTypeDef sConfig;
 	sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE; // Output immediately on register update
+#if LAB_TASK != 4
 	sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+#else
+	sConfig.DAC_Trigger = DAC_TRIGGER_T6_TRGO;
+#endif
 
 	HAL_DAC_ConfigChannel(hdac, &sConfig, DAC_CHANNEL_1);
+
+#if LAB_TASK == 4
+	hdac->Instance->CR |= DAC_CR_DMAEN1; // Enable DMA request gen (but do not start DMA, needs to be done by DMAEx)
+#endif
 
 }
 

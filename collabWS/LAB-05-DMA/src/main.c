@@ -7,6 +7,7 @@
 
 
 #define ESCAPE_CHARACTER '\x1B'
+#define ADC_DMA_BATCH_SIZE 16
 
 
 #if LAB_TASK == 2
@@ -27,15 +28,14 @@ void DMA1_Stream3_IRQHandler()
 	HAL_DMA_IRQHandler(&hspidma_rx);
 }
 
-#elif LAB_TASK == 3 || LAB_TASK == 4
-
-// Common ADC config and interrupts
-#define ADC_DMA_BATCH_SIZE 16
+#elif LAB_TASK == 3
 
 DMA_HandleTypeDef hdmaadc;
 ADC_HandleTypeDef hadc;
 DAC_HandleTypeDef hdac;
 volatile bool data_ready = false;
+
+uint32_t values[2+ADC_DMA_BATCH_SIZE] = {0};
 
 void DMA2_Stream0_IRQHandler()
 {
@@ -52,14 +52,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc_local)
 		data_ready = true;
 	}
 }
-
-#if LAB_TASK == 3
-
-uint32_t values[2+ADC_DMA_BATCH_SIZE] = {0};
-
 #elif LAB_TASK == 4
 
-DMA_HandleTypeDef hdmadac;
 // Allocate buffer memory
 uint32_t __buf[4*ADC_DMA_BATCH_SIZE];
 // Calculate base pointers for sub-buffers
@@ -68,12 +62,36 @@ uint32_t* const buf_adc_2 = __buf+ADC_DMA_BATCH_SIZE;
 uint32_t* const buf_dac_1 = __buf+2*ADC_DMA_BATCH_SIZE;
 uint32_t* const buf_dac_2 = __buf+3*ADC_DMA_BATCH_SIZE;
 
-void DMA1_Stream5_IRQHandler()
+DMA_HandleTypeDef hdmaadc;
+DMA_HandleTypeDef hdmadac;
+ADC_HandleTypeDef hadc;
+DAC_HandleTypeDef hdac;
+uint32_t* volatile new_data = NULL;
+uint32_t* volatile data_out = NULL;
+
+void DMA2_Stream0_IRQHandler() // ADC DMA
+{
+	if(new_data) // Transfer complete before finished with old data
+	{
+		while(1);
+	}
+	HAL_DMA_IRQHandler(&hdmaadc);
+}
+void DMA1_Stream5_IRQHandler() // DAC DMA
 {
 	HAL_DMA_IRQHandler(&hdmadac);
 }
+void ADC_M0_Callback(DMA_HandleTypeDef* hdmaadc)
+{
+	data_out = buf_dac_1;
+	new_data = buf_adc_1;
+}
+void ADC_M1_Callback(DMA_HandleTypeDef* hdmaadc)
+{
+	data_out = buf_dac_2;
+	new_data = buf_adc_2;
+}
 
-#endif
 #endif
 
 
@@ -155,6 +173,7 @@ int main()
 	__HAL_LINKDMA(&hdac,DMA_Handle1,hdmadac);
 
 	TIM_HandleTypeDef sampleTimer;
+	memset(&sampleTimer,0,sizeof(sampleTimer));
 	SamplingTimerInit(&sampleTimer);
 #endif
 
@@ -178,7 +197,7 @@ int main()
 
 
 		// Filter the block
-		for(uint32_t t = 2; t < ADC_DMA_BATCH_SIZE; ++t)
+		for(uint32_t t = 2; t < ADC_DMA_BATCH_SIZE+2; ++t)
 		{
 			filter = 0.312500f*values[t] + 0.240385f*values[t-1] + 0.312500f*values[t-2] + 0.296875f*filter;
 			if(filter >= 1<<12) filter = (1<<12) - 1; // Saturate to 12 bits
@@ -190,17 +209,65 @@ int main()
 	}
 #elif LAB_TASK == 4
 
+	hdmaadc.XferCpltCallback = ADC_M0_Callback;
+	hdmaadc.XferM1CpltCallback = ADC_M1_Callback;
 	// Enable and Start waiting for trigger events
 	HAL_ADC_Start(&hadc);
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
 	// The casts to uint32_t are intentional because the function takes integer addresses instead of pointers (IDK why)
-	HAL_DMAEx_MultiBufferStart(&hdmaadc, (uint32_t)ADC1->DR, (uint32_t)buf_adc_1, (uint32_t)buf_adc_2, ADC_DMA_BATCH_SIZE);
-	HAL_DMAEx_MultiBufferStart(&hdmadac, (uint32_t)ADC1->DR, (uint32_t)buf_dac_1, (uint32_t)buf_dac_2, ADC_DMA_BATCH_SIZE);
+	HAL_DMAEx_MultiBufferStart_IT(&hdmaadc, (uint32_t)&ADC1->DR, (uint32_t)buf_adc_1, (uint32_t)buf_adc_2, ADC_DMA_BATCH_SIZE);
+	HAL_DMAEx_MultiBufferStart_IT(&hdmadac, (uint32_t)buf_dac_1, (uint32_t)&DAC->DHR12R1, (uint32_t)buf_dac_2, ADC_DMA_BATCH_SIZE);
 
 	HAL_TIM_Base_Start(&sampleTimer); // Actually start everything by providing update events
 
+	uint32_t X_minus1 = 0;
+	uint32_t X_minus2 = 0;
+	uint32_t filter = 0;
 
+	while(1)
+	{
+		new_data = NULL;
+		while(!new_data);
+
+		// Filter the block
+		for(uint32_t t = 0; t < ADC_DMA_BATCH_SIZE; ++t)
+		{
+			uint32_t X_tminus1, X_tminus2;
+			switch(t) // Use cached values from last batch when applicable
+			{
+			case 0:
+				X_tminus1 = X_minus1;
+				X_tminus2 = X_minus2;
+				break;
+			case 1:
+				X_tminus1 = new_data[t-1];
+				X_tminus2 = X_minus1;
+				break;
+			default:
+				X_tminus1 = new_data[t-1];
+				X_tminus2 = new_data[t-2];
+				break;
+			}
+
+			if(t==0)
+			{
+				X_tminus1 = X_minus1;
+				X_tminus2 = X_minus2;
+			}
+			else if(t==1)
+			{
+				X_tminus2 = X_minus1;
+			}
+
+			filter = 0.312500f*new_data[t] + 0.240385f*X_tminus1 + 0.312500f*X_tminus2 + 0.296875f*filter;
+			if(filter >= 1<<12) filter = (1<<12) - 1; // Saturate to 12 bits
+			*(data_out++) = filter; // Write output to DAC (eventually)
+		}
+		// Store history values between batches
+		X_minus1 = new_data[ADC_DMA_BATCH_SIZE-1];
+		X_minus2 = new_data[ADC_DMA_BATCH_SIZE-2];
+	}
 
 #endif
 #endif
