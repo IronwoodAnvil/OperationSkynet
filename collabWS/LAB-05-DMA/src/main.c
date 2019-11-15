@@ -16,6 +16,7 @@ SPI_HandleTypeDef hspi;
 DMA_HandleTypeDef hspidma_rx;
 DMA_HandleTypeDef hspidma_tx;
 
+// Need to be globals to persist for DMA
 uint8_t rx_char;
 uint8_t tx_char;
 
@@ -33,8 +34,9 @@ void DMA1_Stream3_IRQHandler()
 DMA_HandleTypeDef hdmaadc;
 ADC_HandleTypeDef hadc;
 DAC_HandleTypeDef hdac;
-volatile bool data_ready = false;
 
+volatile bool data_ready = false;
+// ADC DMA buffer + 2 history values
 uint32_t values[2+ADC_DMA_BATCH_SIZE] = {0};
 
 void DMA2_Stream0_IRQHandler()
@@ -66,6 +68,9 @@ DMA_HandleTypeDef hdmaadc;
 DMA_HandleTypeDef hdmadac;
 ADC_HandleTypeDef hadc;
 DAC_HandleTypeDef hdac;
+
+// These are used to pass the current buffer to the main filter process
+// New data also doubles as the data ready flag
 uint32_t* volatile new_data = NULL;
 uint32_t* volatile data_out = NULL;
 
@@ -83,11 +88,13 @@ void DMA1_Stream5_IRQHandler() // DAC DMA
 }
 void ADC_M0_Callback(DMA_HandleTypeDef* hdmaadc)
 {
+	// Point it at the first buffer bank
 	data_out = buf_dac_1;
 	new_data = buf_adc_1;
 }
 void ADC_M1_Callback(DMA_HandleTypeDef* hdmaadc)
 {
+	// Point it at the second buffer bank
 	data_out = buf_dac_2;
 	new_data = buf_adc_2;
 }
@@ -98,7 +105,7 @@ void ADC_M1_Callback(DMA_HandleTypeDef* hdmaadc)
 int main()
 {
 	Sys_Init();
-#if LAB_TASK == 1
+#if LAB_TASK == 1 // Code is taken verbatim from Lab 1
 	ANSI_TextFormat(3, ANSI_CLEAR_FMT, ANSI_FORE_YELLOW, ANSI_BACK_BLUE);
 	ANSI_ClearScreen();
 	ANSI_ScrollSection(12, ANSI_MAX_ROW);
@@ -155,7 +162,9 @@ int main()
 		tx_char =  getchar(); // if begin
 		printf("\033[u\033[0;0HChar sent:%c\r\n\033[s", tx_char);
 
+		// Do the transaction over DMA.  tx_char and rx_char had to be moved to globals.
 		HAL_SPI_TransmitReceive_DMA(&hspi, &tx_char, &rx_char, 1);
+		// Needed to wait for SPI driver to realize it is done.  Polling just on the DMA handle was not sufficient
 		while(HAL_SPI_GetState(&hspi) != HAL_SPI_STATE_READY);
 
 		printf("\033[u\033[12BChar read:%c", rx_char);
@@ -164,11 +173,11 @@ int main()
 
 #elif LAB_TASK == 3 || LAB_TASK == 4
 
-	//inits (mostly common
+	//inits (mostly common between 3 and 4.  Slight differences are done in the respetive init functions
 	ADC_DMA_Init(&hdmaadc);
 	__HAL_LINKDMA(&hadc,DMA_Handle,hdmaadc);
 
-#if LAB_TASK == 4
+#if LAB_TASK == 4 // Lab 4 DMA init.  It appeared in a previous task that linking the DMA before the peripheral init was important
 	DAC_DMA_Init(&hdmadac);
 	__HAL_LINKDMA(&hdac,DMA_Handle1,hdmadac);
 
@@ -185,23 +194,22 @@ int main()
 
 #if LAB_TASK == 3
 
-	uint16_t filter = 0; //history for equation h , h-1, h-2 ...
+	uint16_t filter = 0;
 
+	// Write at values + 2 so we can use those locations for history so all history can be resolved by offset indexing
 	HAL_ADC_Start_DMA(&hadc,values+2,ADC_DMA_BATCH_SIZE);
+
 	while(1)
 	{
 		data_ready = false;
-		// Actually get data w/ DMA, values + 2 to keep history in a reasonable place
-
 		while(!data_ready); //wait for conversion batch
 
-
-		// Filter the block
+		// Filter the block,
 		for(uint32_t t = 2; t < ADC_DMA_BATCH_SIZE+2; ++t)
 		{
 			filter = 0.312500f*values[t] + 0.240385f*values[t-1] + 0.312500f*values[t-2] + 0.296875f*filter;
 			if(filter >= 1<<12) filter = (1<<12) - 1; // Saturate to 12 bits
-			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, filter); //set dac
+			HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, filter); //set DAC
 		}
 		// Store history values between batches
 		values[0] = values[ADC_DMA_BATCH_SIZE];
@@ -209,6 +217,7 @@ int main()
 	}
 #elif LAB_TASK == 4
 
+	// Set up DMA Callbacks ourselves since we need to handle the DMA ourselves
 	hdmaadc.XferCpltCallback = ADC_M0_Callback;
 	hdmaadc.XferM1CpltCallback = ADC_M1_Callback;
 	// Enable and Start waiting for trigger events
@@ -216,11 +225,13 @@ int main()
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 
 	// The casts to uint32_t are intentional because the function takes integer addresses instead of pointers (IDK why)
+	// This arms the DMAs, but no requests will happen yet because counter is not running
 	HAL_DMAEx_MultiBufferStart_IT(&hdmaadc, (uint32_t)&ADC1->DR, (uint32_t)buf_adc_1, (uint32_t)buf_adc_2, ADC_DMA_BATCH_SIZE);
 	HAL_DMAEx_MultiBufferStart_IT(&hdmadac, (uint32_t)buf_dac_1, (uint32_t)&DAC->DHR12R1, (uint32_t)buf_dac_2, ADC_DMA_BATCH_SIZE);
 
 	HAL_TIM_Base_Start(&sampleTimer); // Actually start everything by providing update events
 
+	// Used to store history and filter values between buffers
 	uint32_t X_minus1 = 0;
 	uint32_t X_minus2 = 0;
 	uint32_t filter = 0;
@@ -228,7 +239,7 @@ int main()
 	while(1)
 	{
 		new_data = NULL;
-		while(!new_data);
+		while(!new_data); // Wait to receive a buffer pointer with the latest data
 
 		// Filter the block
 		for(uint32_t t = 0; t < ADC_DMA_BATCH_SIZE; ++t)
@@ -250,19 +261,11 @@ int main()
 				break;
 			}
 
-			if(t==0)
-			{
-				X_tminus1 = X_minus1;
-				X_tminus2 = X_minus2;
-			}
-			else if(t==1)
-			{
-				X_tminus2 = X_minus1;
-			}
-
+			// Evaluate the filter expression
 			filter = 0.312500f*new_data[t] + 0.240385f*X_tminus1 + 0.312500f*X_tminus2 + 0.296875f*filter;
+
 			if(filter >= 1<<12) filter = (1<<12) - 1; // Saturate to 12 bits
-			*(data_out++) = filter; // Write output to DAC (eventually)
+			*(data_out++) = filter; // Write output to DAC (eventually, when the DMA gets back here)
 		}
 		// Store history values between batches
 		X_minus1 = new_data[ADC_DMA_BATCH_SIZE-1];

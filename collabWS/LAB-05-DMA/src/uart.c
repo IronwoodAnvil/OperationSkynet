@@ -5,6 +5,7 @@
 DMA_HandleTypeDef hdma_tx;
 DMA_HandleTypeDef hdma_rx;
 
+// Holds current transmit buffer
 char* volatile tx_buffer = NULL;
 
 void DMA2_Stream2_IRQHandler() // RX DMA
@@ -24,8 +25,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart == &USB_UART)
 	{
-		free(tx_buffer);
-		tx_buffer = NULL;
+		free(tx_buffer); // Can't have memory leaks!
+		tx_buffer = NULL; // This informs a pending _write that the buffer has been freed and can be reallocated
 	}
 }
 
@@ -61,23 +62,25 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 
 		__HAL_RCC_DMA2_CLK_ENABLE();
 
-		// Common Configuration
+		// Common Configuration for both RX and TX streams
 		hdma_tx.Init.Mode = DMA_NORMAL;
 		hdma_tx.Init.Channel = DMA_CHANNEL_4;
 		hdma_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-		hdma_tx.Init.PeriphInc = DMA_PINC_DISABLE;
-		hdma_tx.Init.MemInc = DMA_MINC_ENABLE;
-		hdma_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+		hdma_tx.Init.PeriphInc = DMA_PINC_DISABLE; // Writing and reading from fixed perhipheral control registers
+		hdma_tx.Init.MemInc = DMA_MINC_ENABLE; // Reading/writing to successive bytes of a memory buffer
+		hdma_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE; // Sending and receiveing bytes
 		hdma_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
 
-		memcpy(&hdma_rx,&hdma_tx,sizeof(hdma_tx)); // Copy common config
+		memcpy(&hdma_rx,&hdma_tx,sizeof(hdma_tx)); // Copy common config to rx handle
 
+		// Tx Specific Init
 		hdma_tx.Instance = DMA2_Stream7;
 		hdma_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
 		HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 		__HAL_LINKDMA(huart,hdmatx,hdma_tx);
 		HAL_DMA_Init(&hdma_tx);
 
+		// Rx specific Init
 		hdma_rx.Instance = DMA2_Stream2;
 		hdma_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
 		HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
@@ -139,7 +142,7 @@ HAL_UART_Receive(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size, uint3
 // Make printf(), putchar(), etc. default to work over USB UART
 int _write(int file, char *ptr, int len) {
 	while(tx_buffer != NULL); // Non null buffer is in use as it is freed and cleared to null in tx complete
-	tx_buffer = malloc(len); // Create persistant buffer
+	tx_buffer = malloc(len); // Create persistent buffer
 	memcpy(tx_buffer,ptr,len); // Copy to persistent buffer
 	HAL_UART_Transmit_DMA(&USB_UART, (uint8_t*) tx_buffer, len);
 	return len;
@@ -151,6 +154,8 @@ int _read(int file, char *ptr, int len) {
 	len = 1; // Again because of scanf's finickiness, len must = 1
 	HAL_UART_Receive_DMA(&USB_UART, (uint8_t*) ptr, len);
 	// Have to poll UART RX status since that appears to come back slightly later than the DMA complete
+	// If polling DMA handle, a read immediately following this will stall as HAL_UART_Receive still
+	// thinks a transfer is in progress
 	while(USB_UART.RxState != HAL_UART_STATE_READY);
 	return len;
 }

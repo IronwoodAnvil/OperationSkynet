@@ -99,7 +99,7 @@ void SysTick_Handler(void) {
 
 
 /*
- * For convenience, configure the SPI handler here
+ * Taken from Lab 3
  */
 // See 769 Description of HAL drivers.pdf, Ch. 58.1 or stm32f7xx_hal_spi.c
 void SPI_Init(SPI_HandleTypeDef* handle, DMA_HandleTypeDef* hdma_rx, DMA_HandleTypeDef* hdma_tx)
@@ -148,6 +148,7 @@ void SPI_Init(SPI_HandleTypeDef* handle, DMA_HandleTypeDef* hdma_rx, DMA_HandleT
 /*
  * This is called upon SPI initialization. It handles the configuration
  * of the GPIO pins for SPI.
+ * Taken from Lab 3
  */
  // Do NOT change the name of an MspInit function; it needs to override a
  // __weak function of the same name. It does not need a prototype in the header.
@@ -185,6 +186,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 	}
 }
 
+// Taken from Lab 4
 void SamplingTimerInit(TIM_HandleTypeDef* handle)
 {
 	__HAL_RCC_TIM6_CLK_ENABLE();
@@ -206,12 +208,12 @@ void ADC_DMA_Init(DMA_HandleTypeDef* hdma)
 
 	hdma->Instance = DMA2_Stream0;
 	hdma->Init.Channel = DMA_CHANNEL_0;
-	hdma->Init.Mode = DMA_CIRCULAR;
+	hdma->Init.Mode = DMA_CIRCULAR; // HAL_DMAEx_MultiBufferStart configures for double-buffer for task 4
 	hdma->Init.Direction = DMA_PERIPH_TO_MEMORY;
 	hdma->Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-	hdma->Init.PeriphInc = DMA_PINC_DISABLE;
-	hdma->Init.MemInc = DMA_MINC_ENABLE;
-	hdma->Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+	hdma->Init.PeriphInc = DMA_PINC_DISABLE; // Peripheral register (DR) is fixed
+	hdma->Init.MemInc = DMA_MINC_ENABLE; // Fill output buffer sequentially
+	hdma->Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD; // HAL_ADC_Start_DMA takes uint32_t buffer so it seems to want word align
 	hdma->Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
 	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 	HAL_DMA_Init(hdma);
@@ -221,6 +223,7 @@ void DAC_DMA_Init(DMA_HandleTypeDef* hdma)
 {
 	__HAL_RCC_DMA1_CLK_ENABLE();
 
+	// Effectively the same as ADC except direction and steam/channel
 	hdma->Instance = DMA1_Stream5;
 	hdma->Init.Channel = DMA_CHANNEL_7;
 	hdma->Init.Mode = DMA_CIRCULAR;
@@ -234,6 +237,7 @@ void DAC_DMA_Init(DMA_HandleTypeDef* hdma)
 	HAL_DMA_Init(hdma);
 }
 
+// Taken from Lab 4
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
 	if(hadc->Instance == ADC1)
@@ -250,6 +254,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 	}
 }
 
+// Mostly taken from Lab 4, with a few tweaks
 void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 {
 	handle->Instance = instance;
@@ -257,10 +262,10 @@ void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT; // 12 bit, right aligned
 	handle->Init.Resolution = ADC_RESOLUTION_12B;
 	handle->Init.ScanConvMode = ADC_SCAN_DISABLE; // Only reading one
-	handle->Init.DMAContinuousRequests = ENABLE;
+	handle->Init.DMAContinuousRequests = ENABLE; // Need to generate DMA requests at all triggers, not just the first
 #if LAB_TASK != 4
 	handle->Init.ContinuousConvMode = ENABLE; // Continuous mode to get max and consistent rate
-#else
+#else // Trigger on timer
 	handle->Init.ExternalTrigConv = ADC_EXTERNALTRIG0_T6_TRGO;
 	handle->Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
 #endif
@@ -280,7 +285,7 @@ void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
 }
 
 
-
+// Mostly taken from Lab 4
 void DAC1_Init(DAC_HandleTypeDef* hdac)
 {
 	hdac->Instance = DAC1;
@@ -288,9 +293,9 @@ void DAC1_Init(DAC_HandleTypeDef* hdac)
 
 	DAC_ChannelConfTypeDef sConfig;
 	sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE; // Output immediately on register update
-#if LAB_TASK != 4
+#if LAB_TASK != 4 // Trigger on write
 	sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
-#else
+#else // trigger on clock
 	sConfig.DAC_Trigger = DAC_TRIGGER_T6_TRGO;
 #endif
 
@@ -302,6 +307,7 @@ void DAC1_Init(DAC_HandleTypeDef* hdac)
 
 }
 
+// Taken from Lab 4
 void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
 {
 	if(hdac->Instance == DAC1)
