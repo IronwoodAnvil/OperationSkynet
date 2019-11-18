@@ -17,7 +17,6 @@ USBH_HandleTypeDef husbh;
 
 bool mouse_connected = false;
 
-
 void USBH_UserProcess(USBH_HandleTypeDef *, uint8_t);
 
 // Receive mouse events when HID interface is active
@@ -28,15 +27,29 @@ void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
 //	MPS_Paint_OnMouse(mouse_info->x, mouse_info->y, mouse_info->buttons[0], mouse_info->buttons[2]);
 }
 
+/*Please note that the application can register multiple classes, for example:
+ Add Supported Class: example HID and MSC classes
+ USBH_RegisterClass(&hUSBHost, USBH_HID_CLASS);
+ USBH_RegisterClass(&hUSBHost, USBH_MSC_CLASS);
+The user application can determine the enumerated class using core API function
+USBH_GetActiveClass() when HOST_USER_CLASS_ACTIVE event occurs.*/
+
 
 int main(void){
 	 // System Initializations
 	Sys_Init();
 
 	// Application Initializations
+
+
 	// USBH Driver Initialization
-	// USB Driver Class Registrations: Add device types to handle.
+	USBH_Init(&husbh, USBH_UserProcess, 0);
+
+	/* Add Supported Class*/
+	USBH_RegisterClass(&husbh, USBH_HID_CLASS);
+
 	// Start USBH Driver
+	USBH_Start(&husbh);
 
 	while(1){
 		USBH_Process(&husbh); // Calls HID process automagically
@@ -50,8 +63,6 @@ int main(void){
 }
 
 void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id) {
-	// ...
-
 	if(id==HOST_USER_CLASS_ACTIVE) // This means HID init was already called and processed enough to finish class request
 	{
 		uint8_t dev_class = USBH_GetActiveClass(&husbh);
@@ -71,7 +82,6 @@ void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id) {
 	{
 		mouse_connected = false; // Nothing connected, definitely not a mouse
 	}
-
 }
 
 // Interrupts and Callbacks...
