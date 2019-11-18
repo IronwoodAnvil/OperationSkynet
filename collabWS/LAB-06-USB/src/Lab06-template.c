@@ -13,6 +13,7 @@
 
 USBH_HandleTypeDef husbh;
 
+
 void USBH_UserProcess(USBH_HandleTypeDef *, uint8_t);
 
 
@@ -28,26 +29,17 @@ int main(void){
 	 // System Initializations
 	Sys_Init();
 
-
-
-
-
-	/* Start Host Process */
 	// Application Initializations
 
 
-
 	// USBH Driver Initialization
-	// USB Driver Class Registrations: Add device types to handle.
+	USBH_Init(&husbh, USBH_UserProcess, 0);
 
-	/* Init Host Library */
-	USBH_Init(&hUSBHost, USBH_UserProcess, 0);
-
-	/* Add Supported Class: example HID class*/
-	USBH_RegisterClass(&hUSBHost, USBH_HID_CLASS);
+	/* Add Supported Class*/
+	USBH_RegisterClass(&husbh, USBH_HID_CLASS);
 
 	// Start USBH Driver
-	USBH_Start(&hUSBHost);
+	USBH_Start(&husbh);
 
 	while(1){
 		USBH_Process(&husbh);
