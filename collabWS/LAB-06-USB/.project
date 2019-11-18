@@ -27,6 +27,11 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>SkynetModules</name>
+			<type>2</type>
+			<locationURI>PARENT-1-PROJECT_LOC/SkynetModules</locationURI>
+		</link>
+		<link>
 			<name>stm32lib</name>
 			<type>2</type>
 			<locationURI>STM32LIB_LOC</locationURI>
