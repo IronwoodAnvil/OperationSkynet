@@ -6,6 +6,7 @@
  */
 
 #include <ansi_util.h>
+#include "mps_paint.h"
 
 typedef enum {
 	COLOR_BLACK,

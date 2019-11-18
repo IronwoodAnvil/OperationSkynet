@@ -22,7 +22,7 @@ void USBH_UserProcess(USBH_HandleTypeDef *, uint8_t);
 // Receive mouse events when HID interface is active
 void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
 {
-	HID_MOUSE_Info_TypeDef* mouse_info =  USBH_HID_GetMouseInfo(USBH_HandleTypeDef *phost);
+	HID_MOUSE_Info_TypeDef* mouse_info =  USBH_HID_GetMouseInfo(phost);
 	printf("v=(%d, %d)\tb=%d%d%d\r\n",mouse_info->x,mouse_info->y,mouse_info->buttons[0],mouse_info->buttons[1],mouse_info->buttons[2]);
 //	MPS_Paint_OnMouse(mouse_info->x, mouse_info->y, mouse_info->buttons[0], mouse_info->buttons[2]);
 }
@@ -56,7 +56,7 @@ int main(void){
 		// Other stuff
 		if(mouse_connected)
 		{
-			MPS_Paint_Tasks();
+//			MPS_Paint_Tasks();
 		}
 
 	}
@@ -70,7 +70,7 @@ void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id) {
 		if( (dev_class==USB_HID_CLASS) && (USBH_HID_GetDeviceType(&husbh)==HID_MOUSE) )
 		{
 			USBH_HID_MouseInit(&husbh);
-			MPS_Paint_Init();
+//			MPS_Paint_Init();
 			mouse_connected = true;
 		}
 		else if(dev_class==USB_MSC_CLASS)
