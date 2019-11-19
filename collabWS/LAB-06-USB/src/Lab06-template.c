@@ -16,6 +16,7 @@
 USBH_HandleTypeDef husbh;
 
 bool mouse_connected = false;
+bool check_hid_type = false;
 
 void USBH_UserProcess(USBH_HandleTypeDef *, uint8_t);
 
@@ -23,8 +24,8 @@ void USBH_UserProcess(USBH_HandleTypeDef *, uint8_t);
 void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
 {
 	HID_MOUSE_Info_TypeDef* mouse_info =  USBH_HID_GetMouseInfo(phost);
+	MPS_Paint_OnMouse(mouse_info->x, mouse_info->y, mouse_info->buttons[0], mouse_info->buttons[1]);
 	printf("v=(%d, %d)\tb=%d%d%d\r\n",mouse_info->x,mouse_info->y,mouse_info->buttons[0],mouse_info->buttons[1],mouse_info->buttons[2]);
-//	MPS_Paint_OnMouse(mouse_info->x, mouse_info->y, mouse_info->buttons[0], mouse_info->buttons[2]);
 }
 
 /*Please note that the application can register multiple classes, for example:
@@ -51,14 +52,29 @@ int main(void){
 	// Start USBH Driver
 	USBH_Start(&husbh);
 
+//	MPS_Paint_Init(); // Start MPS Paint Immediately (e.g. for keyboard testing without mouse/OTG adapter)
+//	mouse_connected = true;
+
 	while(1){
 		USBH_Process(&husbh); // Calls HID process automagically
 		// Other stuff
+		if(check_hid_type)
+		{
+			if (USBH_HID_GetDeviceType(&husbh)==HID_MOUSE)
+			{
+				USBH_HID_MouseInit(&husbh);
+				MPS_Paint_Init();
+				mouse_connected = true;
+			}
+			else {
+				printf("MPS Paint only supports mouse input at this time.\r\n");
+			}
+			check_hid_type = false;
+		}
 		if(mouse_connected)
 		{
-//			MPS_Paint_Tasks();
+			MPS_Paint_Tasks();
 		}
-
 	}
 }
 
@@ -67,11 +83,9 @@ void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id) {
 	{
 		uint8_t dev_class = USBH_GetActiveClass(&husbh);
 		// When device connected
-		if( (dev_class==USB_HID_CLASS) && (USBH_HID_GetDeviceType(&husbh)==HID_MOUSE) )
+		if(dev_class==USB_HID_CLASS)
 		{
-			USBH_HID_MouseInit(&husbh);
-//			MPS_Paint_Init();
-			mouse_connected = true;
+			check_hid_type = true; // Have to wait for this to return for HID devicetype to work
 		}
 		else if(dev_class==USB_MSC_CLASS)
 		{

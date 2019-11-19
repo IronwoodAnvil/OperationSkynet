@@ -85,7 +85,7 @@ static USBH_StatusTypeDef USBH_HID_MouseDecode(USBH_HandleTypeDef *phost);
   * @{
   */
 HID_MOUSE_Info_TypeDef    mouse_info;
-uint32_t                  mouse_report_data[1];
+uint32_t                  mouse_report_data[2];
 
 /* Structures defining how to access items in a HID mouse report */
 /* Access button 1 state. */
