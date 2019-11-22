@@ -131,7 +131,10 @@ static void update_sync()
 
 static void demodulate(int16_t next_adc)
 {
-	float sample = (float)abs(next_adc);
+	// Scale so samples use full uint16_t range
+	// abs(x) 11 bit, filter extracts half amplitude for difference frequency so 10 bit.
+	// for 16 bit input shift 6 (multiply by 64)
+	float sample = (float)(abs(next_adc)<<6);
 	float f_next = FILT_NEXT_SAMP_COEFF*sample;
 
 	for(uint32_t i = 0; i < 8; ++i) // Add historical terms

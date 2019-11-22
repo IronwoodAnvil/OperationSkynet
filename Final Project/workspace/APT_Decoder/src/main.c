@@ -48,10 +48,10 @@ int main(void)
 	{
 		if(new_sample)
 		{
-			int32_t sync = (sync_corr/64) + DC_OFFSET;
-			if(sync < 0) sync = 0;
-			if(sync > 0xFFF) sync = 0xFFF;
-			HAL_DAC_SetValue(&hdac, 0, DAC_ALIGN_12B_R, (uint16_t)sync);
+//			int32_t sync = (sync_corr/64) + DC_OFFSET;
+//			if(sync < 0) sync = 0;
+//			if(sync > 0xFFF) sync = 0xFFF;
+			HAL_DAC_SetValue(&hdac, 0, DAC_ALIGN_12B_R, CURRENT_SAMPLE>>4);
 			new_sample = false;
 		}
 	}
