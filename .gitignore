@@ -1,6 +1,7 @@
 */stm32lib
 */*/stm32lib
 */*/Debug
+**/RemoteSystemsTempFiles
 
 # Created by https://www.gitignore.io/api/c,eclipse
 # Edit at https://www.gitignore.io/?templates=c,eclipse
