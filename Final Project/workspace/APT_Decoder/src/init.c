@@ -1,4 +1,5 @@
 #include "init.h"
+#include "sampling.h"
 
 /**
   * @brief  System Clock Configuration
@@ -76,6 +77,7 @@ void Sys_Init(void) {
 	CPU_CACHE_Enable();		// Enable CPU Caching
 	HAL_Init();				// Initialize HAL
 	SystemClock_Config(); 	// Configure the system clock to 216 MHz
+	Sampling_Init();
 
 	/* UART configured as follows:
 		- Word Length = 8 Bits
@@ -96,119 +98,3 @@ void SysTick_Handler(void) {
   HAL_IncTick();
 }
 
-// OTHER INITIALIZATIONS
-
-//
-//void SamplingTimerInit(TIM_HandleTypeDef* handle)
-//{
-//	__HAL_RCC_TIM6_CLK_ENABLE();
-//
-//	handle->Instance = TIM6;
-//	handle->Init.Prescaler = 0;
-//	handle->Init.Period = 108-1; // Sample at 108 MHz/108 = 1 MHz
-//
-//	HAL_TIM_Base_Init(handle);
-//
-//	// Set it in update event trigger mode
-//	TIM6->CR1 &= ~TIM_CR1_UDIS;
-//	TIM6->CR2 |= TIM_CR2_MMS_1;
-//}
-//
-//
-//void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
-//{
-//
-//	if(hadc->Instance == ADC1)
-//	{
-//		__HAL_RCC_ADC1_CLK_ENABLE();
-//		__HAL_RCC_GPIOA_CLK_ENABLE();
-//
-//		// Arduino A0, PA6, ADC1_IN6
-//		GPIO_InitTypeDef pin_init;
-//		pin_init.Pin = GPIO_PIN_6;
-//		pin_init.Mode = GPIO_MODE_ANALOG;
-//
-//		HAL_GPIO_Init(GPIOA, &pin_init);
-//	}
-//	else if(hadc->Instance == ADC3)
-//	{
-//		__HAL_RCC_ADC3_CLK_ENABLE();
-//		__HAL_RCC_GPIOF_CLK_ENABLE();
-//
-//		//Arduino A3, PF10, ADC3_IN8
-//		GPIO_InitTypeDef pin_init;
-//		pin_init.Pin = GPIO_PIN_10;
-//		pin_init.Mode = GPIO_MODE_ANALOG;
-//
-//		HAL_GPIO_Init(GPIOF, &pin_init);
-//	}
-//#if LAB_TASK==5
-//	HAL_NVIC_EnableIRQ(ADC_IRQn);
-//#endif
-//}
-//
-//void ADC_Init(ADC_TypeDef* instance, ADC_HandleTypeDef* handle)
-//{
-//	memset(handle, 0, sizeof(ADC_HandleTypeDef));
-//	handle->Instance = instance;
-//	handle->Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4; // 216 MHz/4/4 = 27 MHz < 36 MHz
-//	handle->Init.DataAlign = ADC_DATAALIGN_RIGHT; // 12 bit, right aligned
-//	handle->Init.Resolution = ADC_RESOLUTION_12B;
-//	handle->Init.ScanConvMode = ADC_SCAN_DISABLE; // Only reading one channel
-//#if LAB_TASK == 4
-//	handle->Init.ContinuousConvMode = ENABLE; // Continuous mode to get max and consistent rate
-//#elif LAB_TASK == 5
-//	handle->Init.ExternalTrigConv = ADC_EXTERNALTRIG0_T6_TRGO; // Trigger on Timer 6
-//	handle->Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-//#endif
-//
-//	HAL_ADC_Init(handle);
-//
-//	ADC_ChannelConfTypeDef channel;
-//
-//	if(instance == ADC1) channel.Channel = ADC_CHANNEL_6;
-//	else if(instance == ADC3) channel.Channel = ADC_CHANNEL_8;
-//
-//	channel.Rank = 1;
-//
-//#if LAB_TASK == 1
-//	channel.SamplingTime = ADC_SAMPLETIME_480CYCLES; // No need to be fast, this gives more time for sample cap to voltage to converge
-//#else
-//	channel.SamplingTime = ADC_SAMPLETIME_3CYCLES; // Maximum Speed!!! (We should have a strong signal from generator so okay)
-//#endif
-//
-//	HAL_ADC_ConfigChannel(handle, &channel);
-//}
-//
-//
-//
-//void DAC1_Init(DAC_HandleTypeDef* hdac)
-//{
-//	memset(hdac, 0, sizeof(DAC_HandleTypeDef));
-//	hdac->Instance = DAC1;
-//	HAL_DAC_Init(hdac);
-//
-//	DAC_ChannelConfTypeDef sConfig;
-//	sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE; // Output immediately on register update
-//	sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
-//
-//	HAL_DAC_ConfigChannel(hdac, &sConfig, DAC_CHANNEL_1);
-//
-//}
-//
-//void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
-//{
-//	if(hdac->Instance == DAC1)
-//	{
-//		// Arduino A1, PA4, DAC_OUT_1
-//		__HAL_RCC_DAC_CLK_ENABLE();
-//		__HAL_RCC_GPIOA_CLK_ENABLE();
-//
-//		GPIO_InitTypeDef pin_init;
-//		pin_init.Pin = GPIO_PIN_4;
-//		pin_init.Mode = GPIO_MODE_ANALOG;
-//		pin_init.Pull = GPIO_NOPULL;
-//
-//		HAL_GPIO_Init(GPIOA, &pin_init);
-//	}
-//}

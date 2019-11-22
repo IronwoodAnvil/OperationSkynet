@@ -1,29 +1,27 @@
 [X,Fs] = audioread('..\APT Samples\NOAAAPT_Sound.mp3');
+X = resample(X,1664,2205);
+oversample = 8;
+Fs = 4160*oversample;
 
 E =  designfilt('lowpassiir', 'DesignMethod', 'ellip', ...
         'PassbandFrequency',2400, 'StopbandFrequency',3000, ...
         'PassbandRipple',0.5,'StopbandAttenuation',20+20*log10(256), ...
-        'SampleRate',Fs);
-    
-forder = filtord(E) % Display filter order
-[z,p,k] = zpk(E);
-zpk(z,p,k,1/Fs) 
+        'SampleRate',baud_sync_rate);
 
-%fvtool(E)
-grpdelay(E);
+%fvtool(E);
+%grpdelay(E);
+
+forder = filtord(E); % Display filter order
+[nc,dc] = tf(E);
+nc'
+-dc'
+%[z,p,k] = zpk(E);
+%zpk(z,p,k,1/Fs)
+
 
 Y = filter(E,abs(X));
 Y2 = amdemod(X,2400,Fs); % Compare to built in AM demodulate
 t = (0:length(Y))/Fs;
-
-% Compute baud-synchronized samples
-oversample = 8;
-baud_sync_rate = 4160*oversample;
-nsamples = floor(length(Y)*baud_sync_rate/Fs);
-% Take most recent sample at each timer tick (oversample*4160)
-indicies = floor((1:nsamples)*Fs/baud_sync_rate);
-P = Y(indicies);
-t2 = (0:length(P))/baud_sync_rate;
 
 % Plot recovered signals
 figure(1);
@@ -32,7 +30,6 @@ shift = ceil(D(1));
 plot(t(1:Fs),Y(shift+1:Fs+shift));
 hold on;
 plot(t(1:Fs),Y2(1:Fs));
-plot(t2(1:baud_sync_rate),P(1:baud_sync_rate));
 hold off;
 
 % Generate sync reference signals with correct oversampling
