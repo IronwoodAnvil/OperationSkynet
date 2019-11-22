@@ -62,8 +62,14 @@ void MPS_Paint_OnMouse(int8_t x, int8_t y, bool lclick, bool rclick)
 		write_title();
 	}
 
-	cursor_x += x * MOUSE_SENSITIVITY;
+	cursor_x += 2.5f * x * MOUSE_SENSITIVITY; // Increase x speed as the columns are ~2.5x thinner
 	cursor_y += y * MOUSE_SENSITIVITY;
+
+	if(cursor_x < 0) cursor_x = 0.0f;
+	else if(cursor_x > 80) cursor_x = 80.0f;
+
+	if(cursor_y < 0) cursor_y = 0.0f;
+	else if(cursor_y > 25) cursor_y = 25.0f;
 
 	ANSI_SetCursor((uint32_t)cursor_y, (uint32_t)cursor_x);
 	if(lclick)
@@ -91,11 +97,18 @@ void MPS_Paint_Init()
 
 }
 
+void MPS_Paint_End()
+{
+	ANSI_TextFormat(1, ANSI_CLEAR_FMT);
+	ANSI_ClearScreen();
+	ANSI_print("\rThanks for using MPS Paint.  To relaunch, plug in a mouse again\r\n");
+}
+
 #define MODE_NONE 0
 #define MODE_CONTROL 1
 #define MODE_TEXT 2
 
-#define KEYBOARD_MODE MODE_NONE
+#define KEYBOARD_MODE MODE_TEXT
 
 void MPS_Paint_Tasks()
 {
@@ -122,9 +135,12 @@ void MPS_Paint_Tasks()
 		if(ANSI_IsPrintable(in)){
 			putchar(in);
 			cursor_x += 1;
+			if(cursor_x > 80) cursor_x=80.0;
 			ANSI_flush();
 		}
 #endif
 	}
 #endif
 }
+
+

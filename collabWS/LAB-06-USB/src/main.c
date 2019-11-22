@@ -17,6 +17,7 @@ USBH_HandleTypeDef husbh;
 
 bool mouse_connected = false;
 bool check_hid_type = false;
+bool read_flash = false;
 
 void USBH_UserProcess(USBH_HandleTypeDef *, uint8_t);
 
@@ -25,7 +26,7 @@ void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
 {
 	HID_MOUSE_Info_TypeDef* mouse_info =  USBH_HID_GetMouseInfo(phost);
 	MPS_Paint_OnMouse(mouse_info->x, mouse_info->y, mouse_info->buttons[0], mouse_info->buttons[1]);
-	printf("v=(%d, %d)\tb=%d%d%d\r\n",mouse_info->x,mouse_info->y,mouse_info->buttons[0],mouse_info->buttons[1],mouse_info->buttons[2]);
+//	printf("v=(%d, %d)\tb=%d%d%d\r\n",mouse_info->x,mouse_info->y,mouse_info->buttons[0],mouse_info->buttons[1],mouse_info->buttons[2]);
 }
 
 /*Please note that the application can register multiple classes, for example:
@@ -35,6 +36,32 @@ void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
 The user application can determine the enumerated class using core API function
 USBH_GetActiveClass() when HOST_USER_CLASS_ACTIVE event occurs.*/
 
+
+void ls_flash(USBH_HandleTypeDef *phost)
+{
+	FATFS fs;
+	char dskPath[4];
+	DIR rootdir;
+
+	FATFS_LinkDriver(&USBH_Driver, dskPath);
+	f_mount(&fs, dskPath, 0);
+	f_opendir (&rootdir, dskPath);
+
+	FILINFO info;
+	printf("Listing of %s:\r\n",dskPath);
+	f_readdir(&rootdir, &info);
+	while(*info.fname != 0)
+	{
+		char* fname = info.fname;
+		if(strchr(fname,'~')) fname = info.lfname;
+		bool isdir = info.fattrib & AM_DIR;
+		printf("  %-40s%c\r\n",fname,isdir ? 'D' : 'F');
+		f_readdir(&rootdir, &info);
+	}
+
+	f_closedir(&rootdir);
+	FATFS_UnLinkDriver(dskPath);
+}
 
 int main(void){
 	 // System Initializations
@@ -48,6 +75,7 @@ int main(void){
 
 	/* Add Supported Class*/
 	USBH_RegisterClass(&husbh, USBH_HID_CLASS);
+	USBH_RegisterClass(&husbh, USBH_MSC_CLASS);
 
 	// Start USBH Driver
 	USBH_Start(&husbh);
@@ -75,6 +103,11 @@ int main(void){
 		{
 			MPS_Paint_Tasks();
 		}
+		if(read_flash)
+		{
+			ls_flash(&husbh);
+			read_flash = false;
+		}
 	}
 }
 
@@ -90,11 +123,13 @@ void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id) {
 		else if(dev_class==USB_MSC_CLASS)
 		{
 			//Set some sort of flag
+			read_flash = true;
 		}
 	}
-	else if(id==HOST_DEV_DISCONNECTED)
+	else if(mouse_connected && id==HOST_USER_DISCONNECTION)
 	{
-		mouse_connected = false; // Nothing connected, definitely not a mouse
+		MPS_Paint_End();
+		mouse_connected = false;
 	}
 }
 

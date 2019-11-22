@@ -11,6 +11,7 @@
 #include <stdbool.h>
 
 void MPS_Paint_Init();
+void MPS_Paint_End();
 void MPS_Paint_Tasks();
 void MPS_Paint_OnMouse(int8_t x, int8_t y, bool lclick, bool rclick);
 
