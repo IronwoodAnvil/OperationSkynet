@@ -1,5 +1,5 @@
 //--------------------------------
-// Microprocessor Systems Lab 6 - Template - Lab06_p1_sample.c
+// Microprocessor Systems Lab 6
 //--------------------------------
 //
 //
@@ -53,7 +53,7 @@ void ls_flash(USBH_HandleTypeDef *phost)
 	while(*info.fname != 0)
 	{
 		char* fname = info.fname;
-		if(strchr(fname,'~')) fname = info.lfname;
+		if(*info.lfname) fname = info.lfname;
 		bool isdir = info.fattrib & AM_DIR;
 		printf("  %-40s%c\r\n",fname,isdir ? 'D' : 'F');
 		f_readdir(&rootdir, &info);
