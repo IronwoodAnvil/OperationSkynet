@@ -1,11 +1,40 @@
 #include "uart.h"
+#include <stdlib.h>
+#include <stdbool.h>
+
+DMA_HandleTypeDef hdma_tx;
+DMA_HandleTypeDef hdma_rx;
+
+// Holds current transmit buffer
+char* volatile tx_buffer = NULL;
+
+void DMA2_Stream2_IRQHandler() // RX DMA
+{
+	HAL_DMA_IRQHandler(&hdma_rx);
+}
+void DMA2_Stream7_IRQHandler() // TX DMA
+{
+	HAL_DMA_IRQHandler(&hdma_tx);
+}
+void USART1_IRQHandler()
+{
+	HAL_UART_IRQHandler(&USB_UART);
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart == &USB_UART)
+	{
+		free(tx_buffer); // Can't have memory leaks!
+		tx_buffer = NULL; // This informs a pending _write that the buffer has been freed and can be reallocated
+	}
+}
 
 // Initialize Hardware Resources
 // Peripheral's clock enable
 // Peripheral's GPIO Configuration
 void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 	GPIO_InitTypeDef  GPIO_InitStruct;
-
 	if (huart->Instance == USART1) {
 		// Enable GPIO Clocks
 		__GPIOA_CLK_ENABLE();
@@ -24,6 +53,39 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 
 		// Enable UART Clocking
 		__USART1_CLK_ENABLE();
+
+		HAL_NVIC_EnableIRQ(USART1_IRQn);
+
+		///////////////////////////////////////////////
+		// Add DMA initializations here
+		///////////////////////////////////////////////
+
+		__HAL_RCC_DMA2_CLK_ENABLE();
+
+		// Common Configuration for both RX and TX streams
+		hdma_tx.Init.Mode = DMA_NORMAL;
+		hdma_tx.Init.Channel = DMA_CHANNEL_4;
+		hdma_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+		hdma_tx.Init.PeriphInc = DMA_PINC_DISABLE; // Writing and reading from fixed perhipheral control registers
+		hdma_tx.Init.MemInc = DMA_MINC_ENABLE; // Reading/writing to successive bytes of a memory buffer
+		hdma_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE; // Sending and receiveing bytes
+		hdma_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+
+		memcpy(&hdma_rx,&hdma_tx,sizeof(hdma_tx)); // Copy common config to rx handle
+
+		// Tx Specific Init
+		hdma_tx.Instance = DMA2_Stream7;
+		hdma_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+		HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
+		__HAL_LINKDMA(huart,hdmatx,hdma_tx);
+		HAL_DMA_Init(&hdma_tx);
+
+		// Rx specific Init
+		hdma_rx.Instance = DMA2_Stream2;
+		hdma_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+		HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+		__HAL_LINKDMA(huart,hdmarx,hdma_rx);
+		HAL_DMA_Init(&hdma_rx);
 
 	} else if (huart->Instance == USART6) {
 		// Enable GPIO Clocks
@@ -73,10 +135,16 @@ HAL_UART_Receive(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size, uint3
 
 ============================================================================= */
 
+///////////////////////////////////////////////
+// Change _write() and _read() to use DMAs
+///////////////////////////////////////////////
 
 // Make printf(), putchar(), etc. default to work over USB UART
 int _write(int file, char *ptr, int len) {
-	HAL_UART_Transmit(&USB_UART, (uint8_t*) ptr, len, 1000);
+	while(tx_buffer != NULL); // Non null buffer is in use as it is freed and cleared to null in tx complete
+	tx_buffer = malloc(len); // Create persistent buffer
+	memcpy(tx_buffer,ptr,len); // Copy to persistent buffer
+	HAL_UART_Transmit_DMA(&USB_UART, (uint8_t*) tx_buffer, len);
 	return len;
 }
 
@@ -84,7 +152,11 @@ int _write(int file, char *ptr, int len) {
 int _read(int file, char *ptr, int len) {
 	*ptr = 0x00; // Clear the character buffer because scanf() is finicky
 	len = 1; // Again because of scanf's finickiness, len must = 1
-	HAL_UART_Receive(&USB_UART, (uint8_t*) ptr, len, HAL_MAX_DELAY);
+	HAL_UART_Receive_DMA(&USB_UART, (uint8_t*) ptr, len);
+	// Have to poll UART RX status since that appears to come back slightly later than the DMA complete
+	// If polling DMA handle, a read immediately following this will stall as HAL_UART_Receive still
+	// thinks a transfer is in progress
+	while(USB_UART.RxState != HAL_UART_STATE_READY);
 	return len;
 }
 

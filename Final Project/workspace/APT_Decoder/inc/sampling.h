@@ -12,6 +12,8 @@
 #include <stdint.h>
 
 #define OVERSAMPLING (8)
+#define SYNC_PERIOD (4*OVERSAMPLING)
+#define SYNC_LENGTH (7*SYNC_PERIOD)
 #define DC_OFFSET (1<<11)
 
 extern volatile uint16_t samples[];

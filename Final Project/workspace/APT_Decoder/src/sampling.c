@@ -48,9 +48,6 @@ volatile bool new_sample = false;
 ADC_HandleTypeDef hadc;
 TIM_HandleTypeDef htim;
 
-#define SYNC_PERIOD (4*OVERSAMPLING)
-#define SYNC_LENGTH (7*SYNC_PERIOD)
-
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
 	__HAL_RCC_ADC1_CLK_ENABLE();
