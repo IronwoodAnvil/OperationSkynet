@@ -39,18 +39,19 @@ USBH_GetActiveClass() when HOST_USER_CLASS_ACTIVE event occurs.*/
 
 void ls_flash(USBH_HandleTypeDef *phost)
 {
-	FATFS fs;
-	char dskPath[4];
-	DIR rootdir;
+	FATFS fs; // filesystem object to be registered and cleared
+	char dskPath[4]; //Pointer to the null-terminated string that specifies the logical drive. always only 4 characters
 
-	FATFS_LinkDriver(&USBH_Driver, dskPath);
-	f_mount(&fs, dskPath, 0);
-	f_opendir (&rootdir, dskPath);
+	DIR rootdir; //
 
-	FILINFO info;
+	FATFS_LinkDriver(&USBH_Driver, dskPath); //  Links a compatible diskio driver id and increments the number of active linked drivers
+	f_mount(&fs, dskPath, 0); //registers/unregisters filesystem object to the FatFs module
+	f_opendir (&rootdir, dskPath); // opens a directory, in this case the root directory
+
+	FILINFO info;    // holds information about the file
 	printf("Listing of %s:\r\n",dskPath);
-	f_readdir(&rootdir, &info);
-	while(*info.fname != 0)
+	f_readdir(&rootdir, &info); //reads directory at pointer, fills in info.
+	while(*info.fname != 0) //. When all directory items have been read, a null string is stored into the fno->fname[] with no error
 	{
 		char* fname = info.fname;
 		if(strchr(fname,'~')) fname = info.lfname;
@@ -59,7 +60,7 @@ void ls_flash(USBH_HandleTypeDef *phost)
 		f_readdir(&rootdir, &info);
 	}
 
-	f_closedir(&rootdir);
+	f_closedir(&rootdir); //closes dir
 	FATFS_UnLinkDriver(dskPath);
 }
 
