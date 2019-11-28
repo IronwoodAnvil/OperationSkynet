@@ -154,6 +154,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	int16_t adc_val = HAL_ADC_GetValue(hadc) - DC_OFFSET;
 	demodulate(adc_val);
 	update_sync();
+//	if(new_sample) puts("Framing Overrun!\r");
 	new_sample = true;
 }
 

@@ -8,6 +8,7 @@
 #include "framing.h"
 #include "sampling.h"
 #include <stdio.h>
+#include "uart.h"
 
 #define GOOD_SYNC_THRESH (1<<20)
 
@@ -79,6 +80,7 @@ void Framing_Init(DAC_HandleTypeDef* hdac_in)
 	reset_sync_max();
 }
 
+
 void Framing_Tasks()
 {
 	switch(state)
@@ -94,7 +96,7 @@ void Framing_Tasks()
 				{
 					sample_counter -= sync_max.index-SYNC_LENGTH;
 					state = STATE_WAIT_LINE_1;
-					puts("LOCKED\r");
+					puts_dma("LOCKED\r\n");
 				}
 			}
 			break;
@@ -124,10 +126,10 @@ void Framing_Tasks()
 				{
 					int32_t drift = sync_max.index - SYNC_LENGTH; // Calculate deviation from expected sync
 					sample_counter -= drift; // Fix bit counter
-					printf("Drifted %ld\r\n",drift);
+					printf_dma("Drifted %+ld Samples\r\n",drift);
 					state = STATE_WAIT_IMAGE;
 				} else {
-					puts("Lost sync!\r");
+					puts_dma("Lost sync!\r\n");
 					Framing_Init(hdac); // Reset everything and start over
 				}
 			}

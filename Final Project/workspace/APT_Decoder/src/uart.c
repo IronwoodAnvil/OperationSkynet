@@ -1,17 +1,17 @@
 #include "uart.h"
-#include <stdlib.h>
 #include <stdbool.h>
 
 DMA_HandleTypeDef hdma_tx;
 DMA_HandleTypeDef hdma_rx;
 
-// Holds current transmit buffer
-char* volatile tx_buffer = NULL;
+// Holds current DMA transmit buffer
+#define TX_BUF_SIZE 64
+char tx_buffer[TX_BUF_SIZE] = {0};
 
-void DMA2_Stream2_IRQHandler() // RX DMA
-{
-	HAL_DMA_IRQHandler(&hdma_rx);
-}
+//void DMA2_Stream2_IRQHandler() // RX DMA
+//{
+//	HAL_DMA_IRQHandler(&hdma_rx);
+//}
 void DMA2_Stream7_IRQHandler() // TX DMA
 {
 	HAL_DMA_IRQHandler(&hdma_tx);
@@ -25,8 +25,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart == &USB_UART)
 	{
-		free(tx_buffer); // Can't have memory leaks!
-		tx_buffer = NULL; // This informs a pending _write that the buffer has been freed and can be reallocated
+		*tx_buffer = 0; // This informs a pending _write that the buffer has been freed and can be reallocated
 	}
 }
 
@@ -71,7 +70,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 		hdma_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE; // Sending and receiveing bytes
 		hdma_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
 
-		memcpy(&hdma_rx,&hdma_tx,sizeof(hdma_tx)); // Copy common config to rx handle
+//		memcpy(&hdma_rx,&hdma_tx,sizeof(hdma_tx)); // Copy common config to rx handle
 
 		// Tx Specific Init
 		hdma_tx.Instance = DMA2_Stream7;
@@ -80,31 +79,12 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart){
 		__HAL_LINKDMA(huart,hdmatx,hdma_tx);
 		HAL_DMA_Init(&hdma_tx);
 
-		// Rx specific Init
-		hdma_rx.Instance = DMA2_Stream2;
-		hdma_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
-		HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
-		__HAL_LINKDMA(huart,hdmarx,hdma_rx);
-		HAL_DMA_Init(&hdma_rx);
-
-	} else if (huart->Instance == USART6) {
-		// Enable GPIO Clocks
-		__GPIOC_CLK_ENABLE();
-
-		// Initialize TX Pin
-		GPIO_InitStruct.Pin       = GPIO_PIN_6;
-		GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-		GPIO_InitStruct.Pull      = GPIO_PULLUP;
-		GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
-		GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
-		HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); //TX Config
-
-		// Initialize RX Pin
-		GPIO_InitStruct.Pin = GPIO_PIN_7;
-		HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); //RX Config
-
-		// Enable UART Clocking
-		__USART6_CLK_ENABLE();
+//		// Rx specific Init
+//		hdma_rx.Instance = DMA2_Stream2;
+//		hdma_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+//		HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+//		__HAL_LINKDMA(huart,hdmarx,hdma_rx);
+//		HAL_DMA_Init(&hdma_rx);
 
 	}
 }
@@ -135,16 +115,10 @@ HAL_UART_Receive(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size, uint3
 
 ============================================================================= */
 
-///////////////////////////////////////////////
-// Change _write() and _read() to use DMAs
-///////////////////////////////////////////////
 
 // Make printf(), putchar(), etc. default to work over USB UART
 int _write(int file, char *ptr, int len) {
-	while(tx_buffer != NULL); // Non null buffer is in use as it is freed and cleared to null in tx complete
-	tx_buffer = malloc(len); // Create persistent buffer
-	memcpy(tx_buffer,ptr,len); // Copy to persistent buffer
-	HAL_UART_Transmit_DMA(&USB_UART, (uint8_t*) tx_buffer, len);
+	HAL_UART_Transmit(&USB_UART, (uint8_t*) ptr, len, 1000);
 	return len;
 }
 
@@ -152,11 +126,7 @@ int _write(int file, char *ptr, int len) {
 int _read(int file, char *ptr, int len) {
 	*ptr = 0x00; // Clear the character buffer because scanf() is finicky
 	len = 1; // Again because of scanf's finickiness, len must = 1
-	HAL_UART_Receive_DMA(&USB_UART, (uint8_t*) ptr, len);
-	// Have to poll UART RX status since that appears to come back slightly later than the DMA complete
-	// If polling DMA handle, a read immediately following this will stall as HAL_UART_Receive still
-	// thinks a transfer is in progress
-	while(USB_UART.RxState != HAL_UART_STATE_READY);
+	HAL_UART_Receive(&USB_UART, (uint8_t*) ptr, len, HAL_MAX_DELAY);
 	return len;
 }
 
@@ -172,47 +142,29 @@ HAL_UART_Receive(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size, uint3
 
 ============================================================================= */
 
-// Print a string on the specified UART. (Basically a redirectable puts)
-void uart_print(UART_HandleTypeDef *huart, char* string) {
-    HAL_UART_Transmit(huart, (uint8_t*) string, strlen((const char*)string), 1000);
-}
-
-// Get one character
-// 'echo' means enable (1) or disable (0) echoing of characters
-char uart_getchar(UART_HandleTypeDef *huart, uint8_t echo) {
-	char input[1];
-	HAL_UART_Receive(huart, (uint8_t *)input, 1, HAL_MAX_DELAY);
-	if (echo) HAL_UART_Transmit(huart, (uint8_t*) input, 1, 1000);
-	return (char)input[0];
-}
-
-// Send one character
-void uart_putchar(UART_HandleTypeDef *huart, char * input) {
-	HAL_UART_Transmit(huart, (uint8_t*) input, 1, 1000);
-}
-
-// Collects characters until size limit or an endline is recieved
-// Returns number of characters collected
-// 'max size' should match the size of the array or be smaller
-int uart_getline(UART_HandleTypeDef *huart, char * input, int max_size)
+static void wait_buffer_free()
 {
-  char single;
-  int i = 0;
-
-	while(1)
-	{
-		if (i > max_size)
-      {
-				break;
-			}
-
-		single = uart_getchar(huart, 1); // Get one character
-
-  	if (single == '\n' || single == '\r') // Unix & co. use \n, Windows uses \r\n
-			break;
-  	else
-			input[i] = single;
-  	i++;
-	}
-  return i; // The way this is set up, it will always report the wrong size
+	// Make volatile to force reread.  This is the only part it should matter
+	while(*((volatile char*)tx_buffer));
 }
+
+static void write_buffered_str()
+{
+	HAL_UART_Transmit_DMA(&USB_UART, (uint8_t*)tx_buffer, strnlen(tx_buffer,TX_BUF_SIZE));
+}
+
+void puts_dma(const char* string) {
+	wait_buffer_free();
+	strncpy(tx_buffer,string,TX_BUF_SIZE);
+	write_buffered_str();
+}
+
+void printf_dma(const char* fmt, ...) {
+	va_list args;
+	va_start (args, fmt);
+	wait_buffer_free();
+	vsnprintf(tx_buffer,TX_BUF_SIZE,fmt,args);
+	va_end(args);
+	write_buffered_str();
+}
+
