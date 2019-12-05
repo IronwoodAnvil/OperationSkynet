@@ -1,5 +1,6 @@
 #include "init.h"
 #include "sampling.h"
+#include "framing.h"
 
 void DAC1_Init(DAC_HandleTypeDef* hdac)
 {
@@ -44,14 +45,18 @@ int main(void)
 	DAC1_Init(&hdac);
 	HAL_DAC_Start(&hdac, 0);
 
+	Framing_Init(&hdac);
+
 	while(1)
 	{
 		if(new_sample)
 		{
-//			int32_t sync = (sync_corr/64) + DC_OFFSET;
+//			int32_t sync = (sync_corr/64/64) + DC_OFFSET;
 //			if(sync < 0) sync = 0;
 //			if(sync > 0xFFF) sync = 0xFFF;
-			HAL_DAC_SetValue(&hdac, 0, DAC_ALIGN_12B_R, CURRENT_SAMPLE>>4);
+//			HAL_DAC_SetValue(&hdac, 0, DAC_ALIGN_12B_R, sync);//CURRENT_SAMPLE>>4);
+
+			Framing_Tasks();
 			new_sample = false;
 		}
 	}

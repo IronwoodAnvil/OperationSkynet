@@ -48,9 +48,6 @@ volatile bool new_sample = false;
 ADC_HandleTypeDef hadc;
 TIM_HandleTypeDef htim;
 
-#define SYNC_PERIOD (4*OVERSAMPLING)
-#define SYNC_LENGTH (7*SYNC_PERIOD)
-
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
 	__HAL_RCC_ADC1_CLK_ENABLE();
@@ -157,6 +154,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	int16_t adc_val = HAL_ADC_GetValue(hadc) - DC_OFFSET;
 	demodulate(adc_val);
 	update_sync();
+//	if(new_sample) puts("Framing Overrun!\r");
 	new_sample = true;
 }
 
