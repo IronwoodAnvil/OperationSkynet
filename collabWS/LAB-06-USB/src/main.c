@@ -54,10 +54,10 @@ void ls_flash(USBH_HandleTypeDef *phost)
 	while(*info.fname != 0) //. When all directory items have been read, a null string is stored into the fno->fname[] with no error
 	{
 		char* fname = info.fname;
-		if(*info.lfname) fname = info.lfname;
-		bool isdir = info.fattrib & AM_DIR;
+		if(*info.lfname) fname = info.lfname; // if the longfile name is not blank, then the file should be printed as such
+		bool isdir = info.fattrib & AM_DIR;   //check if directory
 		printf("  %-40s%c\r\n",fname,isdir ? 'D' : 'F');
-		f_readdir(&rootdir, &info);
+		f_readdir(&rootdir, &info);  //read next item in directory
 	}
 
 	f_closedir(&rootdir); //closes dir
