@@ -10,7 +10,7 @@ oversample = 8;
 Fs = 4160*oversample;
 
 E =  designfilt('lowpassiir', 'DesignMethod', 'ellip', ...
-        'PassbandFrequency',2400, 'StopbandFrequency',3000, ...
+        'PassbandFrequency',2100, 'StopbandFrequency',2700, ...
         'PassbandRipple',0.5,'StopbandAttenuation',20+20*log10(256), ...
         'SampleRate',Fs);
 
@@ -18,10 +18,10 @@ E =  designfilt('lowpassiir', 'DesignMethod', 'ellip', ...
 %fvtool(E);
 %grpdelay(E);
 
-forder = filtord(E); % Display filter order
+forder = filtord(E) % Display filter order
 [nc,dc] = tf(E);
-%nc'
-%-dc'
+nc'
+-dc'
 %[z,p,k] = zpk(E);
 %zpk(z,p,k,1/Fs)
 
@@ -74,6 +74,7 @@ img = reshape(sum(Y(image_index_set),3),2080,[])';
 imax = max(img(:));
 imin = min(img(:));
 img = (img-imin)/(imax-imin);
+img = floor(img*256)/256;
 figure(5);
 imshow(img);
 imwrite(img,'Full_Image.png');
