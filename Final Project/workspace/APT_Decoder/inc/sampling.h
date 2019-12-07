@@ -16,12 +16,10 @@
 #define SYNC_LENGTH (7*SYNC_PERIOD)
 #define DC_OFFSET (1<<11)
 
-extern volatile uint16_t samples[];
-extern volatile uint8_t sid;
+// Expose the
+extern volatile uint16_t current_sample;
 extern volatile int32_t sync_corr;
 extern volatile bool new_sample;
-
-#define CURRENT_SAMPLE (samples[sid])
 
 void Sampling_Init();
 void Sampling_Start();

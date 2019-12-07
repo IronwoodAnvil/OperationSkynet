@@ -36,10 +36,8 @@ void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
 // Main Execution Loop
 int main(void)
 {
-	//Initialize the system
 	Sys_Init();
-	// Code goes here
-	Sampling_Start();
+	Sampling_Init();
 
 	DAC_HandleTypeDef hdac;
 	DAC1_Init(&hdac);
@@ -47,6 +45,8 @@ int main(void)
 
 	Framing_Init(&hdac);
 
+
+	Sampling_Start();
 	while(1)
 	{
 		if(new_sample)
@@ -54,7 +54,7 @@ int main(void)
 //			int32_t sync = (sync_corr/64/64) + DC_OFFSET;
 //			if(sync < 0) sync = 0;
 //			if(sync > 0xFFF) sync = 0xFFF;
-//			HAL_DAC_SetValue(&hdac, 0, DAC_ALIGN_12B_R, sync);//CURRENT_SAMPLE>>4);
+//			HAL_DAC_SetValue(&hdac, 0, DAC_ALIGN_12B_R, sync);//current_sample>>4);
 
 			Framing_Tasks();
 			new_sample = false;

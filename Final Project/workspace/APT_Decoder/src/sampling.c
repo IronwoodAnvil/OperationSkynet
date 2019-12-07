@@ -10,6 +10,8 @@
 #include <stdlib.h>
 
 // 8th order elliptic LPF for AM demodulation
+// Passband ripple 0.5 dB to 2100 Hz
+// Stopband attnuation -68 dB past 2700 Hz
 const float FILT_NEXT_SAMP_COEFF = 0.000678838494336f;
 const float FILT_SAMP_COEFF[] = {
 		  -0.003534196288993f,
@@ -31,16 +33,20 @@ const float FILT_FILT_COEFF[] = {
 		   5.146330495211290f,
 		  -0.637004588053818f
 };
-
+// History buffers for filter
 float samp_hist[8] = {0};
 float filt_hist[8] = {0};
 uint32_t hist_id = 0;
 #define HIST_ID_MASK (0x07)
 
-volatile uint16_t samples[256] = {0};
-volatile uint8_t sid = 0;
+// Sample history buffer for sync detect filter
+uint16_t samples[256] = {0};
+uint8_t sid = 0;
 
+// Current sync correlation value, sample, and new sample indication flag
+// externed as volatile, but need not be here since this is the file that actually sets it
 volatile int32_t sync_corr = 0;
+volatile uint16_t current_sample = 0;
 volatile bool new_sample = false;
 
 
@@ -115,15 +121,18 @@ void Sampling_Start()
 // Make more effcient by only adding/subtracting at edges
 static void update_sync()
 {
-	sync_corr += samples[sid]; // Add next sample (so double subtract later is correct)
-	sync_corr -= samples[(uint8_t)(sid-SYNC_LENGTH)]; // Remove oldest sample
+	// Use local accumulator to avoid excessive references to volatile sync_corr variable which will go unoptimized
+	int32_t new_val = sync_corr;
+	new_val += samples[sid]; // Add next sample (so double subtract later is correct)
+	new_val -= samples[(uint8_t)(sid-SYNC_LENGTH)]; // Remove oldest sample
 	uint8_t index = sid;
 	for(uint8_t i=0; i<7; ++i) // Update all edges going back
 	{
-		sync_corr -= 2*samples[index];
-		sync_corr += 2*samples[(uint8_t)(index-(SYNC_PERIOD/2))];
-		index -= SYNC_PERIOD;
+		new_val -= 2*samples[index];
+		new_val += 2*samples[(uint8_t)(index-(SYNC_PERIOD/2))];
+		index -= SYNC_PERIOD; // Wraparound of 256 element buffer is automatic due to byte size
 	}
+	sync_corr = new_val; // Assign computed val back to sync_corr
 }
 
 static void demodulate(int16_t next_adc)
@@ -141,11 +150,14 @@ static void demodulate(int16_t next_adc)
 		f_next += FILT_FILT_COEFF[i]*filt_hist[id];
 	}
 
-	hist_id = (hist_id+1)&HIST_ID_MASK;
-	samp_hist[hist_id] = sample;
-	filt_hist[hist_id] = f_next;
+	hist_id = (hist_id+1)&HIST_ID_MASK; // Increament history buffer index
+	samp_hist[hist_id] = sample; // Add sample to history
+	filt_hist[hist_id] = f_next; // Add filter value to history
+	// Saturate filter value to 16 bit
 	if(f_next < 0) f_next = 0.0;
 	if(f_next > 0xFFFF) f_next = 0xFFFF;
+	// Save filtered sample to next sample array position
+	// Wraparound is handles since sid is a byte type and samples is a 256 element buffer
 	samples[++sid] = (uint16_t)f_next;
 }
 
@@ -155,6 +167,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	demodulate(adc_val);
 	update_sync();
 //	if(new_sample) puts("Framing Overrun!\r");
+	current_sample = samp_hist[sid];
 	new_sample = true;
 }
 
