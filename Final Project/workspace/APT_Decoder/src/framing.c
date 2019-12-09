@@ -174,8 +174,8 @@ void Framing_Tasks()
 					// divide by range in 10b is 8 bit
 					uint32_t remapped = (accumulate-(smin<<2))/((smax-smin)>>6);
 					if(remapped>0xFF) remapped = 0xFF; // Saturate if this is out of the established range
-					emit_pixel((uint8_t)remapped);
-//					DISP_EmitPixel((uint8_t)remapped);
+//					emit_pixel((uint8_t)remapped);
+					DISP_EmitPixel((uint8_t)remapped);
 					break;
 				}
 			}

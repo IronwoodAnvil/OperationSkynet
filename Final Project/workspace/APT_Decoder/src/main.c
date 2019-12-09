@@ -45,7 +45,7 @@ int main(void)
 	DAC1_Init(&hdac);
 	HAL_DAC_Start(&hdac, 0);
 
-//	DISP_Init();
+	DISP_Init();
 
 	Framing_Init(&hdac);
 

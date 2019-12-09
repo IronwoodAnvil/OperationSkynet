@@ -150,7 +150,7 @@ static void demodulate(int16_t next_adc)
 		f_next += FILT_FILT_COEFF[i]*filt_hist[id];
 	}
 
-	hist_id = (hist_id+1)&HIST_ID_MASK; // Increament history buffer index
+	hist_id = (hist_id+1)&HIST_ID_MASK; // Increment history buffer index
 	samp_hist[hist_id] = sample; // Add sample to history
 	filt_hist[hist_id] = f_next; // Add filter value to history
 	// Saturate filter value to 16 bit
@@ -167,7 +167,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	demodulate(adc_val);
 	update_sync();
 //	if(new_sample) puts("Framing Overrun!\r");
-	current_sample = samp_hist[sid];
+	current_sample = samples[sid];
 	new_sample = true;
 }
 
