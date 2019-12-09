@@ -1,6 +1,7 @@
 #include "init.h"
 #include "sampling.h"
 #include "framing.h"
+#include "stm32f769i_discovery_lcd.h"
 
 void DAC1_Init(DAC_HandleTypeDef* hdac)
 {
@@ -43,9 +44,7 @@ int main(void)
 	DAC1_Init(&hdac);
 	HAL_DAC_Start(&hdac, 0);
 
-
-	LCD_Config();
-
+	BSP_LCD_Init();
 
 	Framing_Init(&hdac);
 
