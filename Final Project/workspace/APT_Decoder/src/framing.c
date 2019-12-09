@@ -9,6 +9,7 @@
 #include "sampling.h"
 #include <stdio.h>
 #include "uart.h"
+#include "display.h"
 
 #define GOOD_SYNC_THRESH (1<<20)
 
@@ -174,11 +175,14 @@ void Framing_Tasks()
 					uint32_t remapped = (accumulate-(smin<<2))/((smax-smin)>>6);
 					if(remapped>0xFF) remapped = 0xFF; // Saturate if this is out of the established range
 					emit_pixel((uint8_t)remapped);
+//					DISP_EmitPixel((uint8_t)remapped);
+					break;
 				}
 			}
 			++sample_counter;
 			if(PIXEL >= IMAGE_PIXELS) // Finished emitting entire line, prep for resync
 			{
+				DISP_NewLine();
 				sample_counter = 0;
 				reset_sync_max();
 				state = STATE_SYNC;
