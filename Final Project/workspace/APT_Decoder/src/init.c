@@ -98,3 +98,25 @@ void SysTick_Handler(void) {
   HAL_IncTick();
 }
 
+void HAL_LTDC_Init(LTDC_HandleTypeDef* hltdc)
+{
+	/*Program the required configuration through the following parameters: the LTDC
+timing, the horizontal and vertical polarity, the pixel clock polarity, Data Enable polarity
+and the LTDC background color value using HAL_LTDC_Init() function
+	 *
+
+	 Program the required configuration through the following parameters: the pixel format,
+the blending factors, input alpha value, the window size and the image size using
+HAL_LTDC_ConfigLayer() function for foreground or/and background layer
+*/
+	//HAL_LTDC_ConfigLayer(hltdc, pLayerCfg, LayerIdx)
+}
+
+void HAL_LTDC_MspInit(LTDC_HandleTypeDef* hltdc){
+
+}
+
+
+
+}
+

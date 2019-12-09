@@ -45,6 +45,10 @@ int main(void)
 	DAC1_Init(&hdac);
 	HAL_DAC_Start(&hdac, 0);
 
+	LTDC_HandleTypeDef hltdc;
+	HAL_LTDC_Init(&hltdc);
+
+
 	Framing_Init(&hdac);
 
 	while(1)
