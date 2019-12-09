@@ -77,7 +77,6 @@ void Sys_Init(void) {
 	CPU_CACHE_Enable();		// Enable CPU Caching
 	HAL_Init();				// Initialize HAL
 	SystemClock_Config(); 	// Configure the system clock to 216 MHz
-	Sampling_Init();
 
 	/* UART configured as follows:
 		- Word Length = 8 Bits
