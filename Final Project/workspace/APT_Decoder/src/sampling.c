@@ -44,7 +44,6 @@ uint16_t samples[256] = {0};
 uint8_t sid = 0;
 
 // Current sync correlation value, sample, and new sample indication flag
-// externed as volatile, but need not be here since this is the file that actually sets it
 volatile int32_t sync_corr = 0;
 volatile uint16_t current_sample = 0;
 volatile bool new_sample = false;

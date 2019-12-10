@@ -45,8 +45,6 @@ struct {
 	int32_t value;
 } sync_max;
 
-DAC_HandleTypeDef* hdac;
-
 // Reset the sync correlation maximizer
 void reset_sync_max()
 {
@@ -72,16 +70,9 @@ void update_sample_bounds()
 	if(sample < smin) smin = sample;
 }
 
-// Output function for image pixels
-void emit_pixel(uint8_t pixel)
-{
-	HAL_DAC_SetValue(hdac, 0, DAC_ALIGN_8B_R, pixel);
-}
-
 // Initialize the state machine
-void Framing_Init(DAC_HandleTypeDef* hdac_in)
+void Framing_Init()
 {
-	hdac = hdac_in;
 	state = STATE_LOCK_ON;
 	sample_counter = 0;
 	smin = UINT32_MAX;
@@ -139,7 +130,7 @@ void Framing_Tasks()
 					state = STATE_WAIT_IMAGE;
 				} else {
 					puts_dma("Lost sync!\r\n"); // Indicate loss of good signal
-					Framing_Init(hdac); // Reset everything and start search from scratch
+					Framing_Init(); // Reset everything and start search from scratch
 				}
 			}
 			break;
@@ -174,7 +165,6 @@ void Framing_Tasks()
 					// divide by range in 10b is 8 bit
 					uint32_t remapped = (accumulate-(smin<<2))/((smax-smin)>>6);
 					if(remapped>0xFF) remapped = 0xFF; // Saturate if this is out of the established range
-//					emit_pixel((uint8_t)remapped);
 					DISP_EmitPixel((uint8_t)remapped);
 					break;
 				}

@@ -10,7 +10,7 @@
 
 #include <stm32f7xx_hal.h>
 
-void Framing_Init(DAC_HandleTypeDef*);
+void Framing_Init();
 void Framing_Tasks();
 
 #endif /* FRAMING_H_ */
