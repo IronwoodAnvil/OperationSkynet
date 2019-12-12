@@ -17,9 +17,9 @@
 #define DC_OFFSET (1<<11)
 
 // Expose the
-extern volatile uint16_t current_sample;
-extern volatile int32_t sync_corr;
-extern volatile bool new_sample;
+extern volatile uint16_t g_current_sample;
+extern volatile int32_t g_sync_corr;
+extern volatile bool g_new_sample;
 
 void Sampling_Init();
 void Sampling_Start();

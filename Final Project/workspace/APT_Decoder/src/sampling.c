@@ -1,8 +1,9 @@
 /*
  * sampling.c
  *
- *  Created on: Nov 21, 2019
- *      Author: lovep
+ * Contains the sampling, filtering and cross-correlation code
+ * Basically everything that runs in the ADC interrupt
+ *
  */
 
 #include "sampling.h"
@@ -43,13 +44,16 @@ uint32_t hist_id = 0;
 uint16_t samples[256] = {0};
 uint8_t sid = 0;
 
-// Current sync correlation value, sample, and new sample indication flag
-volatile int32_t sync_corr = 0;
-volatile uint16_t current_sample = 0;
-volatile bool new_sample = false;
+// Current sync correlation value for use elsewhere
+volatile int32_t g_sync_corr = 0;
+// Separate global current sample since otherwise the
+// entire sync history buffer must be volatile which precludes
+// potential optimization of that routine
+volatile uint16_t g_current_sample = 0;
+// New sample available flag to notify main loop
+volatile bool g_new_sample = false;
 
-
-
+// ADC1 and Timer 6 HAL handles
 ADC_HandleTypeDef hadc;
 TIM_HandleTypeDef htim;
 
@@ -117,11 +121,11 @@ void Sampling_Start()
 }
 
 // Updates the sync correlation value for the latest sample
-// Make more effcient by only adding/subtracting at edges
+// Make more efficient by only adding/subtracting at edges
 static void update_sync()
 {
 	// Use local accumulator to avoid excessive references to volatile sync_corr variable which will go unoptimized
-	int32_t new_val = sync_corr;
+	int32_t new_val = g_sync_corr;
 	new_val += samples[sid]; // Add next sample (so double subtract later is correct)
 	new_val -= samples[(uint8_t)(sid-SYNC_LENGTH)]; // Remove oldest sample
 	uint8_t index = sid;
@@ -131,7 +135,7 @@ static void update_sync()
 		new_val += 2*samples[(uint8_t)(index-(SYNC_PERIOD/2))];
 		index -= SYNC_PERIOD; // Wraparound of 256 element buffer is automatic due to byte size
 	}
-	sync_corr = new_val; // Assign computed val back to sync_corr
+	g_sync_corr = new_val; // Assign computed val back to sync_corr
 }
 
 static void demodulate(int16_t next_adc)
@@ -165,9 +169,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	int16_t adc_val = HAL_ADC_GetValue(hadc) - DC_OFFSET;
 	demodulate(adc_val);
 	update_sync();
-//	if(new_sample) puts("Framing Overrun!\r");
-	current_sample = samples[sid];
-	new_sample = true;
+	// Notify other code of new sample
+	g_current_sample = samples[sid];
+	g_new_sample = true;
 }
 
 void ADC_IRQHandler()

@@ -1,8 +1,9 @@
 /*
  * framing.c
  *
- *  Created on: Nov 26, 2019
- *      Author: lovep
+ * Contains the state machine for finding and maintaining sync with the APT line rate
+ * as well as sampling and emitting pixels to the display
+ *
  */
 
 #include "framing.h"
@@ -65,7 +66,7 @@ void update_sync_max(int32_t sync)
 // Update signal max/min algorithm
 void update_sample_bounds()
 {
-	uint32_t sample = current_sample;
+	uint32_t sample = g_current_sample;
 	if(sample > smax) smax = sample;
 	if(sample < smin) smin = sample;
 }
@@ -87,7 +88,7 @@ void Framing_Tasks()
 	{
 	case STATE_LOCK_ON: // Search for sync in an entire line length, which is guaranteed to contain one
 		{
-			update_sync_max(sync_corr); // Do maximizing
+			update_sync_max(g_sync_corr); // Do maximizing
 			update_sample_bounds();
 			++sample_counter; // Count samples tested
 			if(sample_counter >= LINE_LENGTH) // We have reached the end of one lines worth.  There should have been a sync A somewhere
@@ -117,7 +118,7 @@ void Framing_Tasks()
 		{
 			// Locate the sync pulse within the syncing interval and update clock
 			// 39 bit interval means we can theoretically correct being 28 bits behind or 11 bits ahead!
-			update_sync_max(sync_corr);
+			update_sync_max(g_sync_corr);
 			++sample_counter;
 			// This is the entire syncing interval, which is actually longer than the real sync pulse
 			if(sample_counter >= SYNC_INTERVAL_LENGTH)
@@ -156,7 +157,7 @@ void Framing_Tasks()
 				accumulate = 0;
 				break;
 			case 3: case 4: case 5: case 6: // Average 4 middle samples to get level
-				accumulate += current_sample;
+				accumulate += g_current_sample;
 				break;
 			case 7: // end of bit, calculate value and emit
 				{   // accumulate is 4x16bit = 18 bit
@@ -165,14 +166,14 @@ void Framing_Tasks()
 					// divide by range in 10b is 8 bit
 					uint32_t remapped = (accumulate-(smin<<2))/((smax-smin)>>6);
 					if(remapped>0xFF) remapped = 0xFF; // Saturate if this is out of the established range
-					DISP_EmitPixel((uint8_t)remapped);
+					Disp_EmitPixel((uint8_t)remapped);
 					break;
 				}
 			}
 			++sample_counter;
 			if(PIXEL >= IMAGE_PIXELS) // Finished emitting entire line, prep for resync
 			{
-				DISP_NewLine();
+				Disp_NewLine();
 				sample_counter = 0;
 				reset_sync_max();
 				state = STATE_SYNC;

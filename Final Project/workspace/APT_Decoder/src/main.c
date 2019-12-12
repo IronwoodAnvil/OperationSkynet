@@ -7,18 +7,20 @@
 // Main Execution Loop
 int main(void)
 {
+	// Initialize Everything
 	Sys_Init();
 	Sampling_Init();
-	DISP_Init();
+	Disp_Init();
 	Framing_Init();
 
+	// Start the sampling/filtering
 	Sampling_Start();
 	while(1)
 	{
-		if(new_sample)
+		if(g_new_sample) // Advance framing state machine for each new sample
 		{
 			Framing_Tasks();
-			new_sample = false;
+			g_new_sample = false;
 		}
 	}
 
