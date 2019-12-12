@@ -24,7 +24,6 @@
 void SystemClock_Config(void) {
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_OscInitTypeDef RCC_OscInitStruct;
-  RCC_PeriphCLKInitTypeDef  PeriphClkInitStruct;
   HAL_StatusTypeDef ret = HAL_OK;
 
   /* Enable HSE Oscillator and activate PLL with HSE as source */
@@ -60,13 +59,6 @@ void SystemClock_Config(void) {
   if(ret != HAL_OK) {
     while(1) { ; }
   }
-
-  /* initialize LTDC LCD clock */
-   PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-   PeriphClkInitStruct.PLLSAI.PLLSAIN = 60;
-   PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;
-   PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
-   HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
 }
 
 // Enables CPU Instruction and Data Caches
